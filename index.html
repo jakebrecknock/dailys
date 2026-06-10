@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>ADB Daily Workforce Reports</title>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 
@@ -12,26 +14,32 @@
     <aside class="sidebar">
       <div class="sidebar-brand">
         <div class="brand-wordmark">ADB</div>
+        <p>Daily Ops</p>
       </div>
 
       <nav class="sidebar-nav">
-        <button class="nav-item active" type="button"><span>⌂</span> Dashboard</button>
-        <button class="nav-item" type="button"><span>▧</span> Daily Reports</button>
-        <button class="nav-item" type="button"><span>☷</span> Rosters</button>
-        <button class="nav-item" type="button"><span>□</span> Compiled Report</button>
-        <button class="nav-item" type="button"><span>⚙</span> Settings</button>
+        <button id="navDashboardBtn" class="nav-item active" type="button">
+          <span>⌂</span>
+          Dashboard
+        </button>
+
+        <button id="navSettingsBtn" class="nav-item" type="button">
+          <span>⚙</span>
+          Settings
+        </button>
       </nav>
 
       <div class="sidebar-user">
         <div class="avatar">J</div>
         <div>
-          <strong>Jake Brecknock</strong>
-          <span>Administrator</span>
+          <strong>Admin</strong>
+          <span>Local Prototype</span>
         </div>
       </div>
     </aside>
 
     <main class="main-content">
+      <!-- DASHBOARD -->
       <section id="dashboardView" class="view">
         <header class="page-header">
           <div>
@@ -46,7 +54,7 @@
             </label>
 
             <button id="previewReportBtn" class="primary-btn" type="button">
-              Compiled Report
+              Preview Report
             </button>
           </div>
         </header>
@@ -72,8 +80,8 @@
           </article>
 
           <article class="stat-card">
-            <p>OVERDUE</p>
-            <h2 id="overdueCount" class="red-text">0</h2>
+            <p>DRAFTS</p>
+            <h2 id="draftCount" class="blue-text">0</h2>
           </article>
         </section>
 
@@ -87,6 +95,7 @@
         </section>
       </section>
 
+      <!-- FORM -->
       <section id="formView" class="view hidden">
         <header class="page-header sub-page">
           <div>
@@ -96,48 +105,117 @@
           </div>
 
           <div class="header-actions">
-            <button id="editRosterBtn" class="secondary-btn" type="button">Edit Roster</button>
-            <button id="saveDraftBtn" class="secondary-btn" type="button">Save Draft</button>
-            <button id="submitBtn" class="primary-btn" type="button">Submit Daily</button>
-            <button id="dashboardBtn" class="ghost-btn" type="button">Dashboard</button>
+            <button id="saveDraftBtn" class="secondary-btn" type="button">
+              Save Draft
+            </button>
+
+            <button id="submitBtn" class="primary-btn" type="button">
+              Submit Daily
+            </button>
+
+            <button id="backToDashboardBtn" class="ghost-btn" type="button">
+              Dashboard
+            </button>
           </div>
         </header>
 
         <div id="teamsContainer" class="team-stack"></div>
       </section>
 
-      <section id="rosterView" class="view hidden">
-        <header class="page-header sub-page">
-          <div>
-            <p class="eyebrow">Roster Editor</p>
-            <h1 id="rosterTitle"></h1>
-            <p>These workers will auto-populate this manager’s form.</p>
-          </div>
-
-          <div class="header-actions">
-            <button id="addWorkerBtn" class="secondary-btn" type="button">+ Add Worker</button>
-            <button id="saveRosterBtn" class="primary-btn" type="button">Save Roster</button>
-            <button class="ghost-btn" type="button" onclick="openManager(currentManager)">Back to Form</button>
-          </div>
-        </header>
-
-        <div id="rosterContainer"></div>
-      </section>
-
+      <!-- REPORT PREVIEW -->
       <section id="reportView" class="view hidden">
         <header class="page-header sub-page">
           <div>
-            <p class="eyebrow">Compiled Report</p>
+            <p class="eyebrow">Compiled Report Preview</p>
             <h1>ADB Daily Workforce Report</h1>
             <p id="reportDateLine"></p>
           </div>
 
           <div class="header-actions">
-            <button class="ghost-btn" type="button" onclick="showDashboard()">Dashboard</button>
+            <button id="reportBackBtn" class="ghost-btn" type="button">
+              Dashboard
+            </button>
           </div>
         </header>
 
         <div id="compiledReport"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settingsView" class="view hidden">
+        <header class="page-header sub-page">
+          <div>
+            <p class="eyebrow">Admin Settings</p>
+            <h1>Settings</h1>
+            <p>Manage stored reports, rosters, activity options, and local prototype data.</p>
+          </div>
+
+          <div class="header-actions">
+            <button id="settingsBackBtn" class="ghost-btn" type="button">
+              Dashboard
+            </button>
+          </div>
+        </header>
+
+        <div class="settings-grid">
+          <article class="settings-card">
+            <h2>Report Data</h2>
+            <p>Clear report data stored in this browser for the selected date or all dates.</p>
+
+            <div class="settings-actions">
+              <button id="clearSelectedDateBtn" class="danger-btn" type="button">
+                Clear Selected Date
+              </button>
+
+              <button id="clearAllReportsBtn" class="danger-btn" type="button">
+                Clear All Reports
+              </button>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <h2>Roster Data</h2>
+            <p>Reset all manager rosters back to the default placeholder workers.</p>
+
+            <div class="settings-actions">
+              <button id="resetRostersBtn" class="secondary-btn" type="button">
+                Reset Rosters
+              </button>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <h2>Manager Rosters</h2>
+            <p>Select a manager below to edit their default workers and team numbers.</p>
+
+            <div id="settingsRosterButtons" class="settings-manager-buttons"></div>
+
+            <div id="settingsRosterEditor" class="settings-roster-editor hidden">
+              <div class="settings-roster-header">
+                <h3 id="settingsRosterTitle"></h3>
+                <button id="settingsAddWorkerBtn" class="secondary-btn" type="button">
+                  + Add Worker
+                </button>
+              </div>
+
+              <div id="settingsRosterRows"></div>
+
+              <button id="settingsSaveRosterBtn" class="primary-btn" type="button">
+                Save Roster
+              </button>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <h2>Future Backend Notes</h2>
+            <ul class="notes-list">
+              <li>Replace placeholder manager names/workers with real rosters.</li>
+              <li>Add real emails before Firebase email backend.</li>
+              <li>Full report list: Derek, all managers, Evan, Christine, Extra 1, Extra 2, Extra 3.</li>
+              <li>This prototype currently uses local browser storage only.</li>
+            </ul>
+          </article>
+        </div>
       </section>
     </main>
   </div>
