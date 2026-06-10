@@ -1,104 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ADB Daily Workforce Reports</title>
-  <link rel="stylesheet" href="styles.css" />
+
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>ADB Daily Workforce Reports</title>
+
+    <link rel="stylesheet" href="styles.css">
+
 </head>
+
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">ADB</div>
-      <div>
-        <h1>Daily Workforce Reports</h1>
-        <p>Manager crew activity reporting</p>
-      </div>
-    </div>
 
-    <div class="top-actions">
-      <label>
-        Report Date
-        <input type="date" id="dateInput" />
-      </label>
-      <button id="dashboardBtn" class="outline hidden">Dashboard</button>
-    </div>
-  </header>
+<div class="layout">
 
-  <main>
-    <section id="dashboardView">
-      <div class="hero">
-        <div>
-          <p class="eyebrow">Daily Status</p>
-          <h2 id="dateTitle">Today’s Reports</h2>
-          <p>Select a manager to complete or edit their daily report.</p>
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+
+            <h1>ADB</h1>
+
         </div>
 
-        <div class="stat">
-          <strong id="completionText">0 / 8</strong>
-          <span>Submitted</span>
-        </div>
-      </div>
+        <div class="sidebar-nav">
 
-      <div id="managerGrid" class="manager-grid"></div>
+            <button class="nav-button active">
+                Dashboard
+            </button>
 
-      <div class="preview-card">
-        <h3>Final Report Preview</h3>
-        <p>This is what would eventually be emailed once all managers submit.</p>
-        <button id="previewReportBtn">Preview Compiled Report</button>
-      </div>
-    </section>
+            <button class="nav-button">
+                Daily Reports
+            </button>
 
-    <section id="formView" class="hidden">
-      <div class="page-head">
-        <div>
-          <p class="eyebrow">Manager Form</p>
-          <h2 id="formTitle"></h2>
-          <p id="formSubtitle"></p>
-        </div>
+            <button class="nav-button">
+                Rosters
+            </button>
 
-        <div class="button-row">
-          <button id="editRosterBtn" class="secondary">Edit Roster</button>
-          <button id="saveDraftBtn" class="secondary">Save Draft</button>
-          <button id="submitBtn">Submit Daily</button>
-        </div>
-      </div>
+            <button class="nav-button">
+                Compiled Report
+            </button>
 
-      <div id="teamsContainer"></div>
-    </section>
+            <button class="nav-button">
+                Settings
+            </button>
 
-    <section id="rosterView" class="hidden">
-      <div class="page-head">
-        <div>
-          <p class="eyebrow">Roster Editor</p>
-          <h2 id="rosterTitle"></h2>
-          <p>These workers will auto-populate this manager’s form.</p>
         </div>
 
-        <div class="button-row">
-          <button id="addWorkerBtn" class="secondary">+ Add Worker</button>
-          <button id="saveRosterBtn">Save Roster</button>
-        </div>
-      </div>
+    </aside>
 
-      <div id="rosterContainer"></div>
-    </section>
 
-    <section id="reportView" class="hidden">
-      <div class="page-head">
-        <div>
-          <p class="eyebrow">Compiled Report</p>
-          <h2>ADB Daily Workforce Report</h2>
-          <p id="reportDateLine"></p>
-        </div>
-      </div>
+    <!-- MAIN -->
 
-      <div id="compiledReport"></div>
-    </section>
-  </main>
+    <main class="main-content">
 
-  <div id="toast" class="toast hidden"></div>
+        <!-- HEADER -->
 
-  <script src="app.js"></script>
+        <header class="header">
+
+            <div>
+
+                <h1 class="title">
+                    Daily Workforce Reports
+                </h1>
+
+                <p class="subtitle">
+                    Manager crew activity reporting
+                </p>
+
+            </div>
+
+            <div class="header-right">
+
+                <div class="date-block">
+
+                    <label>
+
+                        Report Date
+
+                    </label>
+
+                    <input
+                            type="date"
+                            id="dateInput">
+
+                </div>
+
+                <button id="previewReportBtn">
+
+                    Compiled Report
+
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <!-- STATS -->
+
+        <section class="stats-row">
+
+            <div class="stat-card">
+
+                <p class="stat-title">
+
+                    REPORT STATUS
+
+                </p>
+
+                <h2 id="completionText">
+
+                    0 / 8
+
+                </h2>
+
+                <span>
+
+                    Submitted
+
+                </span>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <p class="stat-title">
+
+                    COMPLETE
+
+                </p>
+
+                <h2 class="green">
+
+                    0
+
+                </h2>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <p class="stat-title">
+
+                    MISSING
+
+                </p>
+
+                <h2 class="orange">
+
+                    8
+
+                </h2>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <p class="stat-title">
+
+                    OVERDUE
+
+                </p>
+
+                <h2 class="red">
+
+                    0
+
+                </h2>
+
+            </div>
+
+        </section>
+
+
+        <!-- MANAGERS -->
+
+        <section>
+
+            <h2 class="section-title">
+
+                Managers
+
+            </h2>
+
+            <div
+                    id="managerGrid"
+                    class="manager-grid">
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+</div>
+
+<script src="app.js"></script>
+
 </body>
 </html>

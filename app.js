@@ -79,17 +79,37 @@ const rosterView = document.getElementById("rosterView");
 const reportView = document.getElementById("reportView");
 const managerGrid = document.getElementById("managerGrid");
 const completionText = document.getElementById("completionText");
-const dashboardBtn = document.getElementById("dashboardBtn");
 
 window.onload = () => {
   dateInput.value = new Date().toISOString().slice(0, 10);
   ensureRosters();
+  wireStaticButtons();
   renderDashboard();
 };
 
-dateInput.addEventListener("change", renderDashboard);
-dashboardBtn.addEventListener("click", showDashboard);
-document.getElementById("previewReportBtn").addEventListener("click", renderCompiledReport);
+function wireStaticButtons() {
+  const dashboardBtn = document.getElementById("dashboardBtn");
+  const previewReportBtn = document.getElementById("previewReportBtn");
+  const saveDraftBtn = document.getElementById("saveDraftBtn");
+  const submitBtn = document.getElementById("submitBtn");
+  const editRosterBtn = document.getElementById("editRosterBtn");
+  const addWorkerBtn = document.getElementById("addWorkerBtn");
+  const saveRosterBtn = document.getElementById("saveRosterBtn");
+
+  if (dashboardBtn) dashboardBtn.addEventListener("click", showDashboard);
+  if (previewReportBtn) previewReportBtn.addEventListener("click", renderCompiledReport);
+  if (saveDraftBtn) saveDraftBtn.addEventListener("click", saveDraft);
+  if (submitBtn) submitBtn.addEventListener("click", submitReport);
+  if (editRosterBtn) editRosterBtn.addEventListener("click", openRosterEditor);
+  if (addWorkerBtn) addWorkerBtn.addEventListener("click", addWorker);
+  if (saveRosterBtn) saveRosterBtn.addEventListener("click", saveRoster);
+
+  dateInput.addEventListener("change", renderDashboard);
+}
+
+/* ===================================================
+   STORAGE
+=================================================== */
 
 function key(type, date = dateInput.value) {
   return `${type}_${date}`;
@@ -117,46 +137,76 @@ function saveRosters(rosters) {
   localStorage.setItem("rosters", JSON.stringify(rosters));
 }
 
+/* ===================================================
+   DASHBOARD
+=================================================== */
+
 function renderDashboard() {
   showOnly(dashboardView);
-  dashboardBtn.classList.add("hidden");
 
   const reports = getReports();
-  const submitted = managers.filter(m => reports[m]?.submitted).length;
+  const submitted = managers.filter(manager => reports[manager]?.submitted).length;
+  const missing = managers.length - submitted;
+
   completionText.textContent = `${submitted} / ${managers.length}`;
-  document.getElementById("dateTitle").textContent = `Reports for ${dateInput.value}`;
+
+  const completeCount = document.getElementById("completeCount");
+  const missingCount = document.getElementById("missingCount");
+  const overdueCount = document.getElementById("overdueCount");
+  const dateTitle = document.getElementById("dateTitle");
+
+  if (completeCount) completeCount.textContent = submitted;
+  if (missingCount) missingCount.textContent = missing;
+  if (overdueCount) overdueCount.textContent = "0";
+  if (dateTitle) dateTitle.textContent = `Reports for ${formatDate(dateInput.value)}`;
 
   managerGrid.innerHTML = "";
 
   managers.forEach(manager => {
     const report = reports[manager];
-    const complete = report?.submitted;
+    const complete = !!report?.submitted;
+    const roster = getRosters()[manager] || [];
+    const teams = Object.keys(groupByTeam(roster)).length;
 
-    const card = document.createElement("div");
+    const card = document.createElement("article");
     card.className = `manager-card ${complete ? "complete" : ""}`;
 
     card.innerHTML = `
-      <h3>${manager}</h3>
-      <p><strong>Status:</strong> ${complete ? "Submitted" : "Missing"}</p>
-      <p><strong>Submitted:</strong> ${complete ? report.submittedAt : "—"}</p>
-      <span class="pill ${complete ? "good" : "bad"}">
-        ${complete ? "Complete" : "Not Submitted"}
-      </span>
-      <button>Open Daily</button>
+      <div>
+        <div class="manager-card-top">
+          <h3>${manager}</h3>
+          <span class="pill ${complete ? "good" : "bad"}">
+            ${complete ? "COMPLETE" : "MISSING"}
+          </span>
+        </div>
+
+        <p><strong>Submitted:</strong> ${complete ? report.submittedAt : "—"}</p>
+        <p><strong>Teams:</strong> ${teams}</p>
+        <p><strong>Workers:</strong> ${roster.length}</p>
+      </div>
+
+      <button type="button">
+        Open Daily
+      </button>
     `;
 
-    card.querySelector("button").onclick = () => openManager(manager);
+    card.querySelector("button").addEventListener("click", () => openManager(manager));
+
     managerGrid.appendChild(card);
   });
 }
 
+/* ===================================================
+   MANAGER FORM
+=================================================== */
+
 function openManager(manager) {
   currentManager = manager;
+
   showOnly(formView);
-  dashboardBtn.classList.remove("hidden");
 
   document.getElementById("formTitle").textContent = `${manager} Daily Report`;
-  document.getElementById("formSubtitle").textContent = `Report Date: ${dateInput.value}`;
+  document.getElementById("formSubtitle").textContent = `Report Date: ${formatDate(dateInput.value)}`;
 
   renderForm(manager);
 }
@@ -165,21 +215,24 @@ function renderForm(manager) {
   const container = document.getElementById("teamsContainer");
   const rosters = getRosters();
   const reports = getReports();
+
+  const roster = rosters[manager] || [];
   const existing = reports[manager]?.teams || {};
-  const teams = groupByTeam(rosters[manager]);
+  const teams = groupByTeam(roster);
 
   container.innerHTML = "";
 
   Object.keys(teams).sort().forEach(teamNum => {
     const saved = existing[teamNum] || {};
 
-    const card = document.createElement("div");
+    const card = document.createElement("article");
     card.className = "team-card";
     card.dataset.team = teamNum;
 
     card.innerHTML = `
       <div class="team-top">
         <h3>Team ${teamNum}</h3>
+
         <label class="weather">
           <input type="checkbox" class="weatherCheck" ${saved.weather ? "checked" : ""}>
           Weathered Out
@@ -187,12 +240,17 @@ function renderForm(manager) {
       </div>
 
       <p class="eyebrow">Activities</p>
+
       <div class="activity-grid">
-        ${activities.map(a => `
+        ${activities.map(activity => `
           <label class="activity">
-            <input type="checkbox" class="activityCheck" value="${a}"
-              ${saved.activities?.includes(a) ? "checked" : ""}>
-            ${a}
+            <input
+              type="checkbox"
+              class="activityCheck"
+              value="${activity}"
+              ${saved.activities?.includes(activity) ? "checked" : ""}
+            >
+            ${activity}
           </label>
         `).join("")}
       </div>
@@ -205,6 +263,7 @@ function renderForm(manager) {
       </div>
 
       <p class="eyebrow">Workers</p>
+
       <table class="worker-table">
         <thead>
           <tr>
@@ -214,21 +273,26 @@ function renderForm(manager) {
             <th>Status</th>
           </tr>
         </thead>
+
         <tbody>
           ${teams[teamNum].map(worker => {
             const savedWorker = saved.workers?.[worker.name] || {};
+
             return `
               <tr data-worker="${worker.name}">
                 <td><strong>${worker.name}</strong></td>
+
                 <td>
                   <select class="nwsa">
                     <option ${savedWorker.nwsa === "Y" ? "selected" : ""}>Y</option>
                     <option ${savedWorker.nwsa === "N" ? "selected" : ""}>N</option>
                   </select>
                 </td>
+
                 <td>
                   <input class="vehicle" placeholder="N/A" value="${savedWorker.vehicle || ""}">
                 </td>
+
                 <td>
                   <select class="status">
                     <option ${savedWorker.status === "Working" ? "selected" : ""}>Working</option>
@@ -254,8 +318,8 @@ function collectFormData() {
   document.querySelectorAll(".team-card").forEach(card => {
     const team = card.dataset.team;
 
-    const activitiesSelected = [...card.querySelectorAll(".activityCheck:checked")]
-      .map(cb => cb.value);
+    const selectedActivities = [...card.querySelectorAll(".activityCheck:checked")]
+      .map(checkbox => checkbox.value);
 
     const workers = {};
 
@@ -271,11 +335,11 @@ function collectFormData() {
 
     teams[team] = {
       weather: card.querySelector(".weatherCheck").checked,
-      activities: activitiesSelected,
-      workingFor: card.querySelector(".workingForInput").value,
-      other: card.querySelector(".otherInput").value,
-      siteLocation: card.querySelector(".siteLocationInput").value,
-      adbSite: card.querySelector(".adbSiteInput").value,
+      activities: selectedActivities,
+      workingFor: card.querySelector(".workingForInput").value.trim(),
+      other: card.querySelector(".otherInput").value.trim(),
+      siteLocation: card.querySelector(".siteLocationInput").value.trim(),
+      adbSite: card.querySelector(".adbSiteInput").value.trim(),
       workers
     };
   });
@@ -283,7 +347,9 @@ function collectFormData() {
   return teams;
 }
 
-document.getElementById("saveDraftBtn").onclick = () => {
+function saveDraft() {
+  if (!currentManager) return;
+
   const reports = getReports();
 
   reports[currentManager] = {
@@ -295,9 +361,11 @@ document.getElementById("saveDraftBtn").onclick = () => {
   saveReports(reports);
   toast("Draft saved.");
   renderDashboard();
-};
+}
 
-document.getElementById("submitBtn").onclick = () => {
+function submitReport() {
+  if (!currentManager) return;
+
   const reports = getReports();
 
   reports[currentManager] = {
@@ -309,20 +377,32 @@ document.getElementById("submitBtn").onclick = () => {
   saveReports(reports);
   toast(`${currentManager} submitted.`);
   renderDashboard();
-};
+}
 
-document.getElementById("editRosterBtn").onclick = () => {
+/* ===================================================
+   ROSTER EDITOR
+=================================================== */
+
+function openRosterEditor() {
+  if (!currentManager) return;
+
   showOnly(rosterView);
-  document.getElementById("rosterTitle").textContent = `Edit ${currentManager} Roster`;
+
+  document.getElementById("rosterTitle").textContent =
+    `Edit ${currentManager} Roster`;
+
   renderRosterEditor();
-};
+}
 
 function renderRosterEditor() {
   const rosters = getRosters();
-  const roster = rosters[currentManager];
+  const roster = rosters[currentManager] || [];
   const container = document.getElementById("rosterContainer");
 
-  container.innerHTML = `<div class="roster-card"></div>`;
+  container.innerHTML = `
+    <div class="roster-card"></div>
+  `;
+
   const card = container.querySelector(".roster-card");
 
   roster.forEach((worker, index) => {
@@ -332,53 +412,74 @@ function renderRosterEditor() {
     row.innerHTML = `
       <input value="${worker.name}" placeholder="Worker Name">
       <input value="${worker.team}" placeholder="Team #">
-      <button class="delete-btn">Delete</button>
+      <button class="delete-btn" type="button">Delete</button>
     `;
 
-    row.querySelector(".delete-btn").onclick = () => {
+    row.querySelector(".delete-btn").addEventListener("click", () => {
       roster.splice(index, 1);
+      saveRosters(rosters);
       renderRosterEditor();
-    };
+    });
 
     card.appendChild(row);
   });
 }
 
-document.getElementById("addWorkerBtn").onclick = () => {
+function addWorker() {
+  if (!currentManager) return;
+
   const rosters = getRosters();
-  rosters[currentManager].push({ name: "New Worker", team: "000" });
+
+  if (!rosters[currentManager]) {
+    rosters[currentManager] = [];
+  }
+
+  rosters[currentManager].push({
+    name: "New Worker",
+    team: "000"
+  });
+
   saveRosters(rosters);
   renderRosterEditor();
-};
+}
 
-document.getElementById("saveRosterBtn").onclick = () => {
+function saveRoster() {
+  if (!currentManager) return;
+
   const rosters = getRosters();
   const rows = document.querySelectorAll(".roster-row");
 
   rosters[currentManager] = [...rows].map(row => ({
-    name: row.children[0].value,
-    team: row.children[1].value
+    name: row.children[0].value.trim() || "Unnamed Worker",
+    team: row.children[1].value.trim() || "000"
   }));
 
   saveRosters(rosters);
+
   toast("Roster saved.");
   openManager(currentManager);
-};
+}
+
+/* ===================================================
+   COMPILED REPORT
+=================================================== */
 
 function renderCompiledReport() {
   showOnly(reportView);
-  dashboardBtn.classList.remove("hidden");
 
   const reports = getReports();
-  document.getElementById("reportDateLine").textContent = `Report Date: ${dateInput.value}`;
+
+  document.getElementById("reportDateLine").textContent =
+    `Report Date: ${formatDate(dateInput.value)}`;
 
   const container = document.getElementById("compiledReport");
+
   container.innerHTML = "";
 
   managers.forEach(manager => {
     const report = reports[manager];
 
-    const section = document.createElement("div");
+    const section = document.createElement("section");
     section.className = "report-manager";
 
     if (!report?.submitted) {
@@ -386,6 +487,7 @@ function renderCompiledReport() {
         <h3>${manager}</h3>
         <p><strong>Status:</strong> Missing / Not Submitted</p>
       `;
+
       container.appendChild(section);
       return;
     }
@@ -396,18 +498,27 @@ function renderCompiledReport() {
     `;
 
     Object.entries(report.teams).forEach(([team, data]) => {
-      const div = document.createElement("div");
-      div.className = "report-team";
+      const teamDiv = document.createElement("div");
+      teamDiv.className = "report-team";
 
-      div.innerHTML = `
-        <h4>Team ${team} ${data.weather ? "— WEATHERED OUT" : ""}</h4>
+      teamDiv.innerHTML = `
+        <h4>
+          Team ${team}
+          ${data.weather ? " — WEATHERED OUT" : ""}
+        </h4>
+
         <p>
-          ${(data.activities || []).map(a => `<span class="tag">${a}</span>`).join("")}
+          ${(data.activities || [])
+            .map(activity => `<span class="tag">${activity}</span>`)
+            .join("")}
         </p>
+
         ${data.workingFor ? `<p><strong>Working For:</strong> ${data.workingFor}</p>` : ""}
         ${data.other ? `<p><strong>Other:</strong> ${data.other}</p>` : ""}
+
         <p><strong>Site:</strong> ${data.siteLocation || "—"}</p>
         <p><strong>ADB Site #:</strong> ${data.adbSite || "—"}</p>
+
         <table class="worker-table">
           <thead>
             <tr>
@@ -417,36 +528,48 @@ function renderCompiledReport() {
               <th>Status</th>
             </tr>
           </thead>
+
           <tbody>
-            ${Object.entries(data.workers).map(([name, w]) => `
+            ${Object.entries(data.workers).map(([name, worker]) => `
               <tr>
                 <td>${name}</td>
-                <td>${w.nwsa}</td>
-                <td>${w.vehicle}</td>
-                <td>${w.status}</td>
+                <td>${worker.nwsa}</td>
+                <td>${worker.vehicle}</td>
+                <td>${worker.status}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
       `;
 
-      section.appendChild(div);
+      section.appendChild(teamDiv);
     });
 
     container.appendChild(section);
   });
 }
 
+/* ===================================================
+   HELPERS
+=================================================== */
+
 function groupByTeam(roster) {
   return roster.reduce((groups, worker) => {
-    if (!groups[worker.team]) groups[worker.team] = [];
+    if (!groups[worker.team]) {
+      groups[worker.team] = [];
+    }
+
     groups[worker.team].push(worker);
+
     return groups;
   }, {});
 }
 
 function showOnly(view) {
-  [dashboardView, formView, rosterView, reportView].forEach(v => v.classList.add("hidden"));
+  [dashboardView, formView, rosterView, reportView].forEach(section => {
+    section.classList.add("hidden");
+  });
+
   view.classList.remove("hidden");
 }
 
@@ -456,10 +579,24 @@ function showDashboard() {
 
 function toast(message) {
   const toastBox = document.getElementById("toast");
+
   toastBox.textContent = message;
   toastBox.classList.remove("hidden");
 
   setTimeout(() => {
     toastBox.classList.add("hidden");
   }, 2500);
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "";
+
+  const [year, month, day] = dateString.split("-");
+
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
 }
