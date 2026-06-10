@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADB Daily Workforce Reports</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">ADB</div>
+      <div>
+        <h1>Daily Workforce Reports</h1>
+        <p>Manager crew activity reporting</p>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <label>
+        Report Date
+        <input type="date" id="dateInput" />
+      </label>
+      <button id="dashboardBtn" class="outline hidden">Dashboard</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="dashboardView">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">Daily Status</p>
+          <h2 id="dateTitle">Today’s Reports</h2>
+          <p>Select a manager to complete or edit their daily report.</p>
+        </div>
+
+        <div class="stat">
+          <strong id="completionText">0 / 8</strong>
+          <span>Submitted</span>
+        </div>
+      </div>
+
+      <div id="managerGrid" class="manager-grid"></div>
+
+      <div class="preview-card">
+        <h3>Final Report Preview</h3>
+        <p>This is what would eventually be emailed once all managers submit.</p>
+        <button id="previewReportBtn">Preview Compiled Report</button>
+      </div>
+    </section>
+
+    <section id="formView" class="hidden">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Manager Form</p>
+          <h2 id="formTitle"></h2>
+          <p id="formSubtitle"></p>
+        </div>
+
+        <div class="button-row">
+          <button id="editRosterBtn" class="secondary">Edit Roster</button>
+          <button id="saveDraftBtn" class="secondary">Save Draft</button>
+          <button id="submitBtn">Submit Daily</button>
+        </div>
+      </div>
+
+      <div id="teamsContainer"></div>
+    </section>
+
+    <section id="rosterView" class="hidden">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Roster Editor</p>
+          <h2 id="rosterTitle"></h2>
+          <p>These workers will auto-populate this manager’s form.</p>
+        </div>
+
+        <div class="button-row">
+          <button id="addWorkerBtn" class="secondary">+ Add Worker</button>
+          <button id="saveRosterBtn">Save Roster</button>
+        </div>
+      </div>
+
+      <div id="rosterContainer"></div>
+    </section>
+
+    <section id="reportView" class="hidden">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Compiled Report</p>
+          <h2>ADB Daily Workforce Report</h2>
+          <p id="reportDateLine"></p>
+        </div>
+      </div>
+
+      <div id="compiledReport"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
