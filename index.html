@@ -1,209 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>ADB Daily Workforce Reports</title>
-
-    <link rel="stylesheet" href="styles.css">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADB Daily Workforce Reports</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
-
-<div class="layout">
-
-    <!-- SIDEBAR -->
-
+  <div class="app-shell">
     <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-wordmark">ADB</div>
+      </div>
 
-        <div class="sidebar-logo">
+      <nav class="sidebar-nav">
+        <button class="nav-item active" type="button"><span>⌂</span> Dashboard</button>
+        <button class="nav-item" type="button"><span>▧</span> Daily Reports</button>
+        <button class="nav-item" type="button"><span>☷</span> Rosters</button>
+        <button class="nav-item" type="button"><span>□</span> Compiled Report</button>
+        <button class="nav-item" type="button"><span>⚙</span> Settings</button>
+      </nav>
 
-            <h1>ADB</h1>
-
+      <div class="sidebar-user">
+        <div class="avatar">J</div>
+        <div>
+          <strong>Jake Brecknock</strong>
+          <span>Administrator</span>
         </div>
-
-        <div class="sidebar-nav">
-
-            <button class="nav-button active">
-                Dashboard
-            </button>
-
-            <button class="nav-button">
-                Daily Reports
-            </button>
-
-            <button class="nav-button">
-                Rosters
-            </button>
-
-            <button class="nav-button">
-                Compiled Report
-            </button>
-
-            <button class="nav-button">
-                Settings
-            </button>
-
-        </div>
-
+      </div>
     </aside>
 
-
-    <!-- MAIN -->
-
     <main class="main-content">
+      <section id="dashboardView" class="view">
+        <header class="page-header">
+          <div>
+            <h1>Daily Workforce Reports</h1>
+            <p>Manager crew activity reporting</p>
+          </div>
 
-        <!-- HEADER -->
+          <div class="header-actions">
+            <label class="date-control">
+              <span>Report Date</span>
+              <input type="date" id="dateInput" />
+            </label>
 
-        <header class="header">
-
-            <div>
-
-                <h1 class="title">
-                    Daily Workforce Reports
-                </h1>
-
-                <p class="subtitle">
-                    Manager crew activity reporting
-                </p>
-
-            </div>
-
-            <div class="header-right">
-
-                <div class="date-block">
-
-                    <label>
-
-                        Report Date
-
-                    </label>
-
-                    <input
-                            type="date"
-                            id="dateInput">
-
-                </div>
-
-                <button id="previewReportBtn">
-
-                    Compiled Report
-
-                </button>
-
-            </div>
-
+            <button id="previewReportBtn" class="primary-btn" type="button">
+              Compiled Report
+            </button>
+          </div>
         </header>
 
-
-        <!-- STATS -->
-
-        <section class="stats-row">
-
-            <div class="stat-card">
-
-                <p class="stat-title">
-
-                    REPORT STATUS
-
-                </p>
-
-                <h2 id="completionText">
-
-                    0 / 8
-
-                </h2>
-
-                <span>
-
-                    Submitted
-
-                </span>
-
+        <section class="stats-grid">
+          <article class="stat-card wide">
+            <div>
+              <p>REPORT STATUS</p>
+              <h2 id="completionText">0 / 8</h2>
+              <span>Submitted</span>
             </div>
+            <div class="stat-ghost-icon">👥</div>
+          </article>
 
+          <article class="stat-card">
+            <p>COMPLETE</p>
+            <h2 id="completeCount">0</h2>
+          </article>
 
-            <div class="stat-card">
+          <article class="stat-card">
+            <p>MISSING</p>
+            <h2 id="missingCount" class="orange-text">8</h2>
+          </article>
 
-                <p class="stat-title">
-
-                    COMPLETE
-
-                </p>
-
-                <h2 class="green">
-
-                    0
-
-                </h2>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <p class="stat-title">
-
-                    MISSING
-
-                </p>
-
-                <h2 class="orange">
-
-                    8
-
-                </h2>
-
-            </div>
-
-
-            <div class="stat-card">
-
-                <p class="stat-title">
-
-                    OVERDUE
-
-                </p>
-
-                <h2 class="red">
-
-                    0
-
-                </h2>
-
-            </div>
-
+          <article class="stat-card">
+            <p>OVERDUE</p>
+            <h2 id="overdueCount" class="red-text">0</h2>
+          </article>
         </section>
 
+        <section class="manager-section">
+          <div class="section-row">
+            <h2>Managers</h2>
+            <span id="dateTitle">Reports for today</span>
+          </div>
 
-        <!-- MANAGERS -->
-
-        <section>
-
-            <h2 class="section-title">
-
-                Managers
-
-            </h2>
-
-            <div
-                    id="managerGrid"
-                    class="manager-grid">
-
-            </div>
-
+          <div id="managerGrid" class="manager-grid"></div>
         </section>
+      </section>
 
+      <section id="formView" class="view hidden">
+        <header class="page-header sub-page">
+          <div>
+            <p class="eyebrow">Manager Form</p>
+            <h1 id="formTitle"></h1>
+            <p id="formSubtitle"></p>
+          </div>
 
+          <div class="header-actions">
+            <button id="editRosterBtn" class="secondary-btn" type="button">Edit Roster</button>
+            <button id="saveDraftBtn" class="secondary-btn" type="button">Save Draft</button>
+            <button id="submitBtn" class="primary-btn" type="button">Submit Daily</button>
+            <button id="dashboardBtn" class="ghost-btn" type="button">Dashboard</button>
+          </div>
+        </header>
+
+        <div id="teamsContainer" class="team-stack"></div>
+      </section>
+
+      <section id="rosterView" class="view hidden">
+        <header class="page-header sub-page">
+          <div>
+            <p class="eyebrow">Roster Editor</p>
+            <h1 id="rosterTitle"></h1>
+            <p>These workers will auto-populate this manager’s form.</p>
+          </div>
+
+          <div class="header-actions">
+            <button id="addWorkerBtn" class="secondary-btn" type="button">+ Add Worker</button>
+            <button id="saveRosterBtn" class="primary-btn" type="button">Save Roster</button>
+            <button class="ghost-btn" type="button" onclick="openManager(currentManager)">Back to Form</button>
+          </div>
+        </header>
+
+        <div id="rosterContainer"></div>
+      </section>
+
+      <section id="reportView" class="view hidden">
+        <header class="page-header sub-page">
+          <div>
+            <p class="eyebrow">Compiled Report</p>
+            <h1>ADB Daily Workforce Report</h1>
+            <p id="reportDateLine"></p>
+          </div>
+
+          <div class="header-actions">
+            <button class="ghost-btn" type="button" onclick="showDashboard()">Dashboard</button>
+          </div>
+        </header>
+
+        <div id="compiledReport"></div>
+      </section>
     </main>
+  </div>
 
-</div>
+  <div id="toast" class="toast hidden"></div>
 
-<script src="app.js"></script>
-
+  <script src="app.js"></script>
 </body>
 </html>
