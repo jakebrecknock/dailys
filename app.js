@@ -1,7 +1,6 @@
 /* =====================================================
    ADB DAILY WORKFORCE REPORTS
-   Static GitHub Pages Prototype
-   Uses localStorage only — no Firebase/backend yet.
+   Firestore Version
 ===================================================== */
 
 /* =========================
@@ -39,44 +38,44 @@ const activities = [
 
 const defaultRosters = {
   "AJ": [
-    { name: "AJ Worker 1", team: "101" },
-    { name: "AJ Worker 2", team: "101" },
-    { name: "AJ Worker 3", team: "102" }
+    { name: "AJ Worker 1", team: "1" },
+    { name: "AJ Worker 2", team: "1" },
+    { name: "AJ Worker 3", team: "2" }
   ],
   "Jimmy": [
-    { name: "Jimmy Worker 1", team: "201" },
-    { name: "Jimmy Worker 2", team: "201" },
-    { name: "Jimmy Worker 3", team: "202" }
+    { name: "Jimmy Worker 1", team: "1" },
+    { name: "Jimmy Worker 2", team: "1" },
+    { name: "Jimmy Worker 3", team: "2" }
   ],
   "Matt A": [
-    { name: "Matt A Worker 1", team: "301" },
-    { name: "Matt A Worker 2", team: "301" },
-    { name: "Matt A Worker 3", team: "302" }
+    { name: "Matt A Worker 1", team: "1" },
+    { name: "Matt A Worker 2", team: "1" },
+    { name: "Matt A Worker 3", team: "2" }
   ],
   "Matt P": [
-    { name: "Matt P Worker 1", team: "401" },
-    { name: "Matt P Worker 2", team: "401" },
-    { name: "Matt P Worker 3", team: "402" }
+    { name: "Matt P Worker 1", team: "1" },
+    { name: "Matt P Worker 2", team: "1" },
+    { name: "Matt P Worker 3", team: "2" }
   ],
   "Bob": [
-    { name: "Bob Worker 1", team: "501" },
-    { name: "Bob Worker 2", team: "501" },
-    { name: "Bob Worker 3", team: "502" }
+    { name: "Bob Worker 1", team: "1" },
+    { name: "Bob Worker 2", team: "1" },
+    { name: "Bob Worker 3", team: "2" }
   ],
   "Zach": [
-    { name: "Zach Worker 1", team: "601" },
-    { name: "Zach Worker 2", team: "601" },
-    { name: "Zach Worker 3", team: "602" }
+    { name: "Zach Worker 1", team: "1" },
+    { name: "Zach Worker 2", team: "1" },
+    { name: "Zach Worker 3", team: "2" }
   ],
   "Will": [
-    { name: "Will Worker 1", team: "701" },
-    { name: "Will Worker 2", team: "701" },
-    { name: "Will Worker 3", team: "702" }
+    { name: "Will Worker 1", team: "1" },
+    { name: "Will Worker 2", team: "1" },
+    { name: "Will Worker 3", team: "2" }
   ],
   "Barry": [
-    { name: "Barry Worker 1", team: "801" },
-    { name: "Barry Worker 2", team: "801" },
-    { name: "Barry Worker 3", team: "802" }
+    { name: "Barry Worker 1", team: "1" },
+    { name: "Barry Worker 2", team: "1" },
+    { name: "Barry Worker 3", team: "2" }
   ]
 };
 
@@ -85,6 +84,8 @@ const defaultRosters = {
 ========================= */
 
 let currentManager = null;
+let cachedReports = {};
+let cachedRosters = {};
 
 /* =========================
    DOM REFERENCES
@@ -117,11 +118,17 @@ const toastBox = document.getElementById("toast");
    STARTUP
 ========================= */
 
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
   dateInput.value = new Date().toISOString().slice(0, 10);
 
-  ensureRosters();
   wireButtons();
+
+  toast("Connecting to Firebase...");
+
+  await firebaseEnsureDefaultRosters(defaultRosters);
+
+  await refreshData();
+
   showDashboard();
 });
 
@@ -131,6 +138,7 @@ window.addEventListener("load", () => {
 
 function wireButtons() {
   document.getElementById("logoBtn").addEventListener("click", showDashboard);
+
   document.getElementById("previewReportBtn").addEventListener("click", renderCompiledReport);
   document.getElementById("backToDashboardBtn").addEventListener("click", showDashboard);
   document.getElementById("reportBackBtn").addEventListener("click", showDashboard);
@@ -139,9 +147,15 @@ function wireButtons() {
   document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
   document.getElementById("submitBtn").addEventListener("click", submitReport);
 
-  dateInput.addEventListener("change", () => {
+  dateInput.addEventListener("change", async () => {
+    await refreshData();
+
     if (!dashboardView.classList.contains("hidden")) {
       renderDashboard();
+    }
+
+    if (!formView.classList.contains("hidden") && currentManager) {
+      openManager(currentManager);
     }
 
     if (!reportView.classList.contains("hidden")) {
@@ -151,33 +165,18 @@ function wireButtons() {
 }
 
 /* =========================
-   STORAGE
+   FIRESTORE DATA LOADING
 ========================= */
 
-function reportKey(date = dateInput.value) {
-  return `reports_${date}`;
-}
+async function refreshData() {
+  cachedReports = await firebaseGetReports(dateInput.value);
+  cachedRosters = await firebaseGetRosters();
 
-function getReports(date = dateInput.value) {
-  return JSON.parse(localStorage.getItem(reportKey(date)) || "{}");
-}
-
-function saveReports(reports, date = dateInput.value) {
-  localStorage.setItem(reportKey(date), JSON.stringify(reports));
-}
-
-function ensureRosters() {
-  if (!localStorage.getItem("rosters")) {
-    localStorage.setItem("rosters", JSON.stringify(defaultRosters));
-  }
-}
-
-function getRosters() {
-  return JSON.parse(localStorage.getItem("rosters") || "{}");
-}
-
-function saveRosters(rosters) {
-  localStorage.setItem("rosters", JSON.stringify(rosters));
+  managers.forEach(manager => {
+    if (!cachedRosters[manager]) {
+      cachedRosters[manager] = defaultRosters[manager] || [];
+    }
+  });
 }
 
 /* =========================
@@ -202,11 +201,8 @@ function showDashboard() {
 ========================= */
 
 function renderDashboard() {
-  const reports = getReports();
-  const rosters = getRosters();
-
-  const submittedManagers = managers.filter(manager => reports[manager]?.submitted);
-  const draftManagers = managers.filter(manager => reports[manager] && !reports[manager]?.submitted);
+  const submittedManagers = managers.filter(manager => cachedReports[manager]?.submitted);
+  const draftManagers = managers.filter(manager => cachedReports[manager] && !cachedReports[manager]?.submitted);
 
   const submitted = submittedManagers.length;
   const drafts = draftManagers.length;
@@ -221,8 +217,8 @@ function renderDashboard() {
   managerGrid.innerHTML = "";
 
   managers.forEach(manager => {
-    const report = reports[manager];
-    const roster = rosters[manager] || [];
+    const report = cachedReports[manager];
+    const roster = cachedRosters[manager] || [];
     const teamCount = Object.keys(groupByTeam(roster)).length;
 
     const isSubmitted = !!report?.submitted;
@@ -242,7 +238,7 @@ function renderDashboard() {
         </div>
 
         <p><strong>Status:</strong> ${isSubmitted ? "Submitted" : isDraft ? "Draft Saved" : "Missing"}</p>
-        <p><strong>Submitted:</strong> ${isSubmitted ? report.submittedAt : "—"}</p>
+        <p><strong>Submitted:</strong> ${isSubmitted ? formatTimestamp(report.submittedAt) : "—"}</p>
         <p><strong>Teams:</strong> ${teamCount}</p>
         <p><strong>Workers:</strong> ${roster.length}</p>
       </div>
@@ -277,13 +273,12 @@ function openManager(manager) {
 
 function renderManagerForm(manager) {
 
-  const rosters = getRosters();
-  const reports = getReports();
+  const roster = cachedRosters[manager] || [];
 
-  const roster = rosters[manager] || [];
   const teams = groupByTeam(roster);
 
-  const existing = reports[manager]?.teams || {};
+  const existing =
+    cachedReports[manager]?.teams || {};
 
   teamsContainer.innerHTML = "";
 
@@ -291,19 +286,27 @@ function renderManagerForm(manager) {
     .sort((a, b) => Number(a) - Number(b))
     .forEach(teamNumber => {
 
-      const saved = existing[teamNumber] || {};
+      const saved =
+        existing[teamNumber] || {};
 
-      const teamCard = document.createElement("article");
+      const teamCard =
+        document.createElement("article");
 
-      teamCard.className = "team-card";
+      teamCard.className =
+        "team-card";
 
-      teamCard.dataset.team = teamNumber;
+      teamCard.dataset.team =
+        teamNumber;
 
       teamCard.innerHTML = `
 
         <div class="team-top">
 
-          <h3>TEAM ${teamNumber}</h3>
+          <h3>
+
+            TEAM ${teamNumber}
+
+          </h3>
 
           <label class="weather">
 
@@ -362,14 +365,15 @@ function renderManagerForm(manager) {
 
           </div>
 
+
           <div class="conditional-inputs">
 
             <input
               class="
                 workingForInput
                 ${saved.activities?.includes("Working For")
-                  ? ""
-                  : "hidden"}
+                ? ""
+                : "hidden"}
               "
 
               placeholder="Working for..."
@@ -381,8 +385,8 @@ function renderManagerForm(manager) {
               class="
                 otherInput
                 ${saved.activities?.includes("Other")
-                  ? ""
-                  : "hidden"}
+                ? ""
+                : "hidden"}
               "
 
               placeholder="Other activity..."
@@ -437,11 +441,8 @@ function renderManagerForm(manager) {
               <tr>
 
                 <th>Name</th>
-
                 <th>NWSA</th>
-
                 <th>Vehicle</th>
-
                 <th>Off</th>
 
               </tr>
@@ -480,8 +481,8 @@ function renderManagerForm(manager) {
                             toggle-btn
                             yes
                             ${savedWorker.nwsa === "Y"
-                              ? "active"
-                              : ""}
+                            ? "active"
+                            : ""}
                           "
                           data-value="Y"
                         >
@@ -496,8 +497,8 @@ function renderManagerForm(manager) {
                             toggle-btn
                             no
                             ${savedWorker.nwsa === "N"
-                              ? "active"
-                              : ""}
+                            ? "active"
+                            : ""}
                           "
                           data-value="N"
                         >
@@ -532,8 +533,8 @@ function renderManagerForm(manager) {
                             toggle-btn
                             clear
                             ${!savedWorker.off
-                              ? "active"
-                              : ""}
+                            ? "active"
+                            : ""}
                           "
                           data-off=""
                         >
@@ -548,8 +549,8 @@ function renderManagerForm(manager) {
                             toggle-btn
                             off
                             ${savedWorker.off === "PTO"
-                              ? "active"
-                              : ""}
+                            ? "active"
+                            : ""}
                           "
                           data-off="PTO"
                         >
@@ -564,8 +565,8 @@ function renderManagerForm(manager) {
                             toggle-btn
                             off
                             ${savedWorker.off === "Sick"
-                              ? "active"
-                              : ""}
+                            ? "active"
+                            : ""}
                           "
                           data-off="Sick"
                         >
@@ -580,8 +581,8 @@ function renderManagerForm(manager) {
                             toggle-btn
                             off
                             ${savedWorker.off === "Other"
-                              ? "active"
-                              : ""}
+                            ? "active"
+                            : ""}
                           "
                           data-off="Other"
                         >
@@ -611,9 +612,7 @@ function renderManagerForm(manager) {
       teamsContainer.appendChild(teamCard);
 
       wireTeamConditionalInputs(teamCard);
-
       wireToggleButtons(teamCard);
-
       wireWeatherLogic(teamCard);
 
     });
@@ -673,7 +672,7 @@ function wireTeamConditionalInputs(teamCard) {
 
 function wireToggleButtons(teamCard) {
 
-  /* NWSA */
+  /* ---------- NWSA ---------- */
 
   teamCard.querySelectorAll(".nwsa-toggle")
     .forEach(toggle => {
@@ -698,7 +697,7 @@ function wireToggleButtons(teamCard) {
     });
 
 
-  /* OFF */
+  /* ---------- OFF ---------- */
 
   teamCard.querySelectorAll(".off-toggle")
     .forEach(toggle => {
@@ -757,7 +756,7 @@ function wireWeatherLogic(teamCard) {
 
 
 /* =========================
-   FORM DATA
+   DATA COLLECTION
 ========================= */
 
 function getSelectedActivities(teamCard) {
@@ -820,7 +819,7 @@ function collectFormData() {
             row.dataset.worker;
 
 
-          /* NWSA */
+          /* ---------- NWSA ---------- */
 
           let nwsa = "";
 
@@ -837,7 +836,7 @@ function collectFormData() {
           }
 
 
-          /* OFF */
+          /* ---------- OFF ---------- */
 
           let off = "";
 
@@ -1089,46 +1088,51 @@ function markInvalid(element) {
 
 
 /* =========================
-   SAVE DRAFT
+   FIRESTORE SAVE DRAFT
 ========================= */
 
-function saveDraft() {
+async function saveDraft() {
 
   if (!currentManager) {
     return;
   }
 
-  const reports =
-    getReports();
+  try {
 
-  reports[currentManager] = {
-
-    submitted: false,
-
-    draftSavedAt:
-      new Date().toLocaleString(),
-
-    teams:
+    await firebaseSaveDraft(
+      dateInput.value,
+      currentManager,
       collectFormData()
+    );
 
-  };
+    await refreshData();
 
-  saveReports(reports);
+    toast(
+      `${currentManager} draft saved`
+    );
 
-  toast(
-    `${currentManager} draft saved`
-  );
+    renderDashboard();
 
-  renderDashboard();
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    toast(
+      "Error saving draft"
+    );
+
+  }
 
 }
 
 
 /* =========================
-   SUBMIT
+   FIRESTORE SUBMIT
 ========================= */
 
-function submitReport() {
+async function submitReport() {
 
   if (!currentManager) {
     return;
@@ -1145,28 +1149,33 @@ function submitReport() {
 
   }
 
-  const reports =
-    getReports();
+  try {
 
-  reports[currentManager] = {
-
-    submitted: true,
-
-    submittedAt:
-      new Date().toLocaleString(),
-
-    teams:
+    await firebaseSubmitReport(
+      dateInput.value,
+      currentManager,
       collectFormData()
+    );
 
-  };
+    await refreshData();
 
-  saveReports(reports);
+    toast(
+      `${currentManager} submitted`
+    );
 
-  toast(
-    `${currentManager} submitted`
-  );
+    showDashboard();
 
-  showDashboard();
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    toast(
+      "Error submitting report"
+    );
+
+  }
 
 }
 
@@ -1183,13 +1192,10 @@ function renderCompiledReport() {
 
   compiledReport.innerHTML = "";
 
-  const reports =
-    getReports();
-
   managers.forEach(manager => {
 
     const report =
-      reports[manager];
+      cachedReports[manager];
 
     const section =
       document.createElement("section");
@@ -1235,7 +1241,7 @@ function renderCompiledReport() {
 
         <strong>Submitted:</strong>
 
-        ${report.submittedAt}
+        ${formatTimestamp(report.submittedAt)}
 
       </p>
 
@@ -1265,7 +1271,6 @@ function renderCompiledReport() {
               <span class="tag">
 
                 Working For:
-
                 ${team.workingFor}
 
               </span>
@@ -1285,7 +1290,6 @@ function renderCompiledReport() {
               <span class="tag">
 
                 Other:
-
                 ${team.other}
 
               </span>
@@ -1309,7 +1313,6 @@ function renderCompiledReport() {
           }
 
         });
-
 
         teamDiv.innerHTML = `
 
@@ -1370,29 +1373,10 @@ function renderCompiledReport() {
 
               <tr>
 
-                <th>
-
-                  Worker
-
-                </th>
-
-                <th>
-
-                  NWSA
-
-                </th>
-
-                <th>
-
-                  Vehicle
-
-                </th>
-
-                <th>
-
-                  Off
-
-                </th>
+                <th>Worker</th>
+                <th>NWSA</th>
+                <th>Vehicle</th>
+                <th>Off</th>
 
               </tr>
 
@@ -1519,6 +1503,30 @@ function formatDate(dateString) {
     }
 
   );
+
+}
+
+
+function formatTimestamp(timestamp) {
+
+  if (!timestamp) {
+
+    return "—";
+
+  }
+
+  try {
+
+    return new Date(timestamp)
+      .toLocaleString();
+
+  }
+
+  catch {
+
+    return timestamp;
+
+  }
 
 }
 
