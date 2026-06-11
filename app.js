@@ -135,7 +135,7 @@ window.addEventListener("load", async () => {
   cachedReports = {};
 
   showDashboard();
-
+  renderDashboard();
   try {
     await firebaseEnsureDefaultRosters(defaultRosters);
     await refreshData();
@@ -235,7 +235,9 @@ function showDashboard() {
 ========================= */
 
 function renderDashboard() {
-  const submittedManagers = managers.filter(manager => cachedReports[manager]?.submitted);
+  const submittedManagers = managers.filter(manager => {
+    return cachedReports[manager]?.submitted;
+  });
 
   const submitted = submittedManagers.length;
   const missing = managers.length - submitted;
@@ -243,20 +245,26 @@ function renderDashboard() {
   completionText.textContent = `${submitted} / ${managers.length}`;
   completeCount.textContent = submitted;
   missingCount.textContent = missing;
-  draftCount.textContent = "—";
   dateTitle.textContent = `Reports for ${formatDate(dateInput.value)}`;
 
   managerGrid.innerHTML = "";
 
   managers.forEach(manager => {
-    const report = cachedReports[manager];
-    const roster = cachedRosters[manager] || [];
-    const teamCount = Object.keys(groupByTeam(roster)).length;
+    const report = cachedReports[manager] || {};
+    const roster =
+      cachedRosters[manager] ||
+      defaultRosters[manager] ||
+      [];
 
-    const isSubmitted = !!report?.submitted;
+    const teamCount =
+      Object.keys(groupByTeam(roster)).length;
+
+    const isSubmitted =
+      report.submitted === true;
 
     const card = document.createElement("article");
-    card.className = `manager-card ${isSubmitted ? "complete" : ""}`;
+    card.className =
+      `manager-card ${isSubmitted ? "complete" : ""}`;
 
     card.innerHTML = `
       <div>
@@ -268,10 +276,25 @@ function renderDashboard() {
           </span>
         </div>
 
-        <p><strong>Status:</strong> ${isSubmitted ? "Submitted / Editable" : "Missing"}</p>
-        <p><strong>Submitted:</strong> ${isSubmitted ? formatTimestamp(report.submittedAt) : "—"}</p>
-        <p><strong>Teams:</strong> ${teamCount}</p>
-        <p><strong>Workers:</strong> ${roster.length}</p>
+        <p>
+          <strong>Status:</strong>
+          ${isSubmitted ? "Submitted / Editable" : "Missing"}
+        </p>
+
+        <p>
+          <strong>Submitted:</strong>
+          ${isSubmitted ? formatTimestamp(report.submittedAt) : "—"}
+        </p>
+
+        <p>
+          <strong>Teams:</strong>
+          ${teamCount}
+        </p>
+
+        <p>
+          <strong>Workers:</strong>
+          ${roster.length}
+        </p>
       </div>
 
       <button type="button">
