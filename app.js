@@ -719,33 +719,97 @@ function validateForm() {
       const teamNumber =
         teamCard.dataset.team;
 
+      clearInvalidFields(teamCard);
+
       const weatheredOut =
         teamCard.querySelector(".weatherCheck")
           .checked;
-
-      clearInvalidFields(teamCard);
 
       if (weatheredOut) {
         return;
       }
 
-      const selectedActivities =
-        getSelectedActivities(teamCard);
+      let totalWorkers = 0;
+      let borrowedWorkers = 0;
 
-      if (selectedActivities.length === 0) {
+      /* ---------- FIRST PASS ---------- */
+
+      teamCard.querySelectorAll("tbody tr")
+        .forEach(row => {
+
+          totalWorkers++;
+
+          const workerName =
+            row.dataset.worker;
+
+          const workingForSelect =
+            row.querySelector(".working-for-select");
+
+          const workingForOther =
+            row.querySelector(".working-for-other");
+
+          if (
+            workingForSelect.value === "Other"
+          ) {
+
+            borrowedWorkers++;
+
+            if (
+              !workingForOther.value.trim()
+            ) {
+
+              errors.push(
+                `Team ${teamNumber}: ${workerName} needs Working For name`
+              );
+
+              markInvalid(
+                workingForOther
+              );
+
+            }
+
+          }
+
+        });
+
+      /* ---------- ENTIRE TEAM BORROWED ---------- */
+
+      if (
+        totalWorkers > 0 &&
+        borrowedWorkers === totalWorkers
+      ) {
+
+        return;
+
+      }
+
+      /* ---------- ACTIVITIES ---------- */
+
+      const selectedActivities =
+        getSelectedActivities(
+          teamCard
+        );
+
+      if (
+        selectedActivities.length === 0
+      ) {
 
         errors.push(
           `Team ${teamNumber}: select at least one activity`
         );
 
         markInvalid(
-          teamCard.querySelector(".activity-grid")
+          teamCard.querySelector(
+            ".activity-grid"
+          )
         );
 
       }
 
       if (
-        selectedActivities.includes("Other")
+        selectedActivities.includes(
+          "Other"
+        )
       ) {
 
         const input =
@@ -753,17 +817,23 @@ function validateForm() {
             ".otherInput"
           );
 
-        if (!input.value.trim()) {
+        if (
+          !input.value.trim()
+        ) {
 
           errors.push(
             `Team ${teamNumber}: enter Other activity`
           );
 
-          markInvalid(input);
+          markInvalid(
+            input
+          );
 
         }
 
       }
+
+      /* ---------- SITE ---------- */
 
       const siteLocation =
         teamCard.querySelector(
@@ -775,25 +845,35 @@ function validateForm() {
           ".adbSiteInput"
         );
 
-      if (!siteLocation.value.trim()) {
+      if (
+        !siteLocation.value.trim()
+      ) {
 
         errors.push(
           `Team ${teamNumber}: Site Location required`
         );
 
-        markInvalid(siteLocation);
+        markInvalid(
+          siteLocation
+        );
 
       }
 
-      if (!adbSite.value.trim()) {
+      if (
+        !adbSite.value.trim()
+      ) {
 
         errors.push(
           `Team ${teamNumber}: Site Number required`
         );
 
-        markInvalid(adbSite);
+        markInvalid(
+          adbSite
+        );
 
       }
+
+      /* ---------- WORKERS ---------- */
 
       teamCard.querySelectorAll("tbody tr")
         .forEach(row => {
@@ -802,14 +882,29 @@ function validateForm() {
             row.dataset.worker;
 
           const vehicle =
-            row.querySelector(".vehicle");
+            row.querySelector(
+              ".vehicle"
+            );
 
           const nwsaButton =
             row.querySelector(
               ".nwsa-toggle .active"
             );
 
-          if (!nwsaButton) {
+          const workingForSelect =
+            row.querySelector(".working-for-select");
+
+          if (
+            workingForSelect.value === "Other"
+          ) {
+
+            return;
+
+          }
+
+          if (
+            !nwsaButton
+          ) {
 
             errors.push(
               `Team ${teamNumber}: ${workerName} missing NWSA`
@@ -825,29 +920,11 @@ function validateForm() {
               `Team ${teamNumber}: ${workerName} missing vehicle`
             );
 
-            markInvalid(vehicle);
+            markInvalid(
+              vehicle
+            );
 
           }
-
-          const workingForSelect =
-            row.querySelector(".working-for-select");
-
-          const workingForOther =
-            row.querySelector(".working-for-other");
-
-          if (
-            workingForSelect.value === "Other"
-            &&
-            !workingForOther.value.trim()
-        ) {
-
-  errors.push(
-    `Team ${teamNumber}: ${workerName} needs Working For name`
-  );
-
-  markInvalid(workingForOther);
-
-}
 
         });
 
@@ -1405,8 +1482,12 @@ function renderCompiledReport() {
                       </td>
 
                       <td>
-                        ${worker.workingFor === "Other" ? worker.workingForOther || "N/A" : "Me"}
-                      </td>
+  ${
+    worker.workingFor === "Other"
+      ? worker.workingForOther || "N/A"
+      : ""
+  }
+</td>
 
                       <td>
                         ${worker.off || "Working"}
