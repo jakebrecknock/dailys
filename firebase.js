@@ -3,12 +3,13 @@
 ===================================================== */
 
 const firebaseConfig = {
-  apiKey: "...",
-  authDomain: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
+  apiKey: "AIzaSyCA-CNpxiEGhwgZThNK9oPkgKac5lcqqq8",
+  authDomain: "ada-daily-reports.firebaseapp.com",
+  projectId: "ada-daily-reports",
+  storageBucket: "ada-daily-reports.firebasestorage.app",
+  messagingSenderId: "833103180561",
+  appId: "1:833103180561:web:38a4d755bf1be6e12d52b0",
+  measurementId: "G-ELSEK5KJHE"
 };
 
 firebase.initializeApp(firebaseConfig);
