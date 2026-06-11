@@ -87,6 +87,14 @@
           </div>
 
           <div class="header-actions">
+            <button id="tempWorkerBtn" class="secondary-btn" type="button">
+              + Temp Worker
+            </button>
+
+            <button id="editRosterBtn" class="secondary-btn" type="button">
+              Edit Roster
+            </button>
+
             <button id="saveDraftBtn" class="secondary-btn" type="button">
               Save Draft
             </button>
@@ -126,6 +134,17 @@
         <div id="compiledReport" class="formal-report-sheet"></div>
       </section>
     </main>
+  </div>
+
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modalTitle">Modal</h2>
+        <button id="closeModalBtn" type="button">×</button>
+      </div>
+
+      <div id="modalBody"></div>
+    </div>
   </div>
 
   <div id="toast" class="toast hidden"></div>

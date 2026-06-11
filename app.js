@@ -32,7 +32,6 @@ const activities = [
   "Decom",
   "Travel",
   "Troubleshooting",
-  "Working For",
   "Other"
 ];
 
@@ -114,6 +113,11 @@ const compiledReport = document.getElementById("compiledReport");
 
 const toastBox = document.getElementById("toast");
 
+const modalOverlay = document.getElementById("modalOverlay");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+const closeModalBtn = document.getElementById("closeModalBtn");
+
 /* =========================
    STARTUP
 ========================= */
@@ -152,6 +156,15 @@ function wireButtons() {
 
   document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
   document.getElementById("submitBtn").addEventListener("click", submitReport);
+
+  document.getElementById("tempWorkerBtn").addEventListener("click", openTempWorkerModal);
+  document.getElementById("editRosterBtn").addEventListener("click", openEditRosterModal);
+  closeModalBtn.addEventListener("click", closeModal);
+  modalOverlay.addEventListener("click", event => {
+    if (event.target === modalOverlay) {
+      closeModal();
+    }
+  });
 
   dateInput.addEventListener("change", async () => {
     await refreshData();
@@ -278,351 +291,224 @@ function openManager(manager) {
 }
 
 function renderManagerForm(manager) {
-
   const roster = cachedRosters[manager] || [];
-
-  const teams = groupByTeam(roster);
-
-  const existing =
-    cachedReports[manager]?.teams || {};
+  const rosterTeams = groupByTeam(roster);
+  const existing = cachedReports[manager]?.teams || {};
 
   teamsContainer.innerHTML = "";
 
-  Object.keys(teams)
-    .sort((a, b) => Number(a) - Number(b))
-    .forEach(teamNumber => {
+  const allTeamNumbers = [
+    ...new Set([
+      ...Object.keys(rosterTeams),
+      ...Object.keys(existing)
+    ])
+  ].sort((a, b) => Number(a) - Number(b));
 
-      const saved =
-        existing[teamNumber] || {};
+  allTeamNumbers.forEach(teamNumber => {
+    const saved = existing[teamNumber] || {};
+    const rosterWorkers = rosterTeams[teamNumber] || [];
+    const rosterWorkerNames = rosterWorkers.map(worker => worker.name);
 
-      const teamCard =
-        document.createElement("article");
+    const savedWorkers = saved.workers || {};
 
-      teamCard.className =
-        "team-card";
+    const tempWorkers = Object.keys(savedWorkers)
+      .filter(name => !rosterWorkerNames.includes(name))
+      .map(name => ({
+        name,
+        team: teamNumber,
+        temp: true
+      }));
 
-      teamCard.dataset.team =
-        teamNumber;
+    const allWorkers = [
+      ...rosterWorkers,
+      ...tempWorkers
+    ];
 
-      teamCard.innerHTML = `
+    const teamCard = document.createElement("article");
+    teamCard.className = "team-card";
+    teamCard.dataset.team = teamNumber;
 
-        <div class="team-top">
+    teamCard.innerHTML = `
+      <div class="team-top">
+        <h3>TEAM ${teamNumber}</h3>
 
-          <h3>
+        <label class="weather">
+          <input
+            type="checkbox"
+            class="weatherCheck"
+            ${saved.weather ? "checked" : ""}
+          >
+          WEATHERED OUT
+        </label>
+      </div>
 
-            TEAM ${teamNumber}
+      <section class="form-block">
+        <p class="form-block-title">Activities</p>
 
-          </h3>
+        <div class="activity-grid">
+          ${activities.map(activity => {
+            const checked = saved.activities?.includes(activity) ? "checked" : "";
 
-          <label class="weather">
-
-            <input
-              type="checkbox"
-              class="weatherCheck"
-              ${saved.weather ? "checked" : ""}
-            >
-
-            WEATHERED OUT
-
-          </label>
-
+            return `
+              <label class="activity">
+                <input
+                  type="checkbox"
+                  class="activityCheck"
+                  value="${activity}"
+                  ${checked}
+                >
+                <span>${activity}</span>
+              </label>
+            `;
+          }).join("")}
         </div>
 
+        <div class="conditional-inputs">
+          <input
+            class="otherInput ${saved.activities?.includes("Other") ? "" : "hidden"}"
+            placeholder="Other activity..."
+            value="${saved.other || ""}"
+          >
+        </div>
+      </section>
 
-        <section class="form-block">
+      <section class="form-block">
+        <p class="form-block-title">Site Information</p>
 
-          <p class="form-block-title">
+        <div class="site-grid">
+          <input
+            class="siteLocationInput"
+            placeholder="Site Location"
+            value="${saved.siteLocation || ""}"
+          >
 
-            Activities
+          <input
+            class="adbSiteInput"
+            placeholder="ADB Site Number"
+            value="${saved.adbSite || ""}"
+          >
+        </div>
+      </section>
 
-          </p>
+      <section class="form-block">
+        <p class="form-block-title">Workers</p>
 
-          <div class="activity-grid">
+        <table class="worker-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>NWSA</th>
+              <th>Vehicle</th>
+              <th>Working For</th>
+              <th>Off</th>
+            </tr>
+          </thead>
 
-            ${activities.map(activity => {
-
-              const checked =
-                saved.activities?.includes(activity)
-                  ? "checked"
-                  : "";
+          <tbody>
+            ${allWorkers.map(worker => {
+              const savedWorker = savedWorkers[worker.name] || {};
+              const workingFor = savedWorker.workingFor || "Me";
 
               return `
-
-                <label class="activity">
-
-                  <input
-                    type="checkbox"
-                    class="activityCheck"
-                    value="${activity}"
-                    ${checked}
-                  >
-
-                  <span>
-
-                    ${activity}
-
-                  </span>
-
-                </label>
-
-              `;
-
-            }).join("")}
-
-          </div>
-
-
-          <div class="conditional-inputs">
-
-            <input
-              class="
-                workingForInput
-                ${saved.activities?.includes("Working For")
-                ? ""
-                : "hidden"}
-              "
-
-              placeholder="Working for..."
-
-              value="${saved.workingFor || ""}"
-            >
-
-            <input
-              class="
-                otherInput
-                ${saved.activities?.includes("Other")
-                ? ""
-                : "hidden"}
-              "
-
-              placeholder="Other activity..."
-
-              value="${saved.other || ""}"
-            >
-
-          </div>
-
-        </section>
-
-
-        <section class="form-block">
-
-          <p class="form-block-title">
-
-            Site Information
-
-          </p>
-
-          <div class="site-grid">
-
-            <input
-              class="siteLocationInput"
-              placeholder="Site Location"
-              value="${saved.siteLocation || ""}"
-            >
-
-            <input
-              class="adbSiteInput"
-              placeholder="ADB Site Number"
-              value="${saved.adbSite || ""}"
-            >
-
-          </div>
-
-        </section>
-
-
-        <section class="form-block">
-
-          <p class="form-block-title">
-
-            Workers
-
-          </p>
-
-          <table class="worker-table">
-
-            <thead>
-
-              <tr>
-
-                <th>Name</th>
-                <th>NWSA</th>
-                <th>Vehicle</th>
-                <th>Off</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              ${teams[teamNumber].map(worker => {
-
-                const savedWorker =
-                  saved.workers?.[worker.name] || {};
-
-                return `
-
-                  <tr data-worker="${worker.name}">
-
-                    <td>
-
-                      <strong>
-
-                        ${worker.name}
-
-                      </strong>
-
-                    </td>
-
-
-                    <td>
-
-                      <div class="nwsa-toggle">
-
-                        <button
-                          type="button"
-                          class="
-                            toggle-btn
-                            yes
-                            ${savedWorker.nwsa === "Y"
-                            ? "active"
-                            : ""}
-                          "
-                          data-value="Y"
-                        >
-
-                          YES
-
-                        </button>
-
-                        <button
-                          type="button"
-                          class="
-                            toggle-btn
-                            no
-                            ${savedWorker.nwsa === "N"
-                            ? "active"
-                            : ""}
-                          "
-                          data-value="N"
-                        >
-
-                          NO
-
-                        </button>
-
-                      </div>
-
-                    </td>
-
-
-                    <td>
-
-                      <input
-                        class="vehicle"
-                        placeholder="Vehicle # or N/A"
-                        value="${savedWorker.vehicle || ""}"
+                <tr data-worker="${worker.name}">
+                  <td>
+                    <strong>
+                      ${worker.name}
+                      ${worker.temp ? " (TEMP)" : ""}
+                    </strong>
+                  </td>
+
+                  <td>
+                    <div class="nwsa-toggle">
+                      <button
+                        type="button"
+                        class="toggle-btn yes ${savedWorker.nwsa === "Y" ? "active" : ""}"
+                        data-value="Y"
                       >
+                        YES
+                      </button>
 
-                    </td>
+                      <button
+                        type="button"
+                        class="toggle-btn no ${savedWorker.nwsa === "N" ? "active" : ""}"
+                        data-value="N"
+                      >
+                        NO
+                      </button>
+                    </div>
+                  </td>
 
+                  <td>
+                    <input
+                      class="vehicle"
+                      placeholder="Vehicle # or N/A"
+                      value="${savedWorker.vehicle || ""}"
+                    >
+                  </td>
 
-                    <td>
+                  <td>
+                    <select class="working-for-select">
+                      <option value="Me" ${workingFor === "Me" ? "selected" : ""}>Me</option>
+                      <option value="Other" ${workingFor === "Other" ? "selected" : ""}>Other</option>
+                    </select>
 
-                      <div class="off-toggle">
+                    <input
+                      class="working-for-other ${workingFor === "Other" ? "" : "hidden-other"}"
+                      placeholder="Who?"
+                      value="${savedWorker.workingForOther || ""}"
+                    >
+                  </td>
 
-                        <button
-                          type="button"
-                          class="
-                            toggle-btn
-                            clear
-                            ${!savedWorker.off
-                            ? "active"
-                            : ""}
-                          "
-                          data-off=""
-                        >
+                  <td>
+                    <div class="off-toggle">
+                      <button
+                        type="button"
+                        class="toggle-btn clear ${!savedWorker.off ? "active" : ""}"
+                        data-off=""
+                      >
+                        Working
+                      </button>
 
-                          Working
+                      <button
+                        type="button"
+                        class="toggle-btn off ${savedWorker.off === "PTO" ? "active" : ""}"
+                        data-off="PTO"
+                      >
+                        PTO
+                      </button>
 
-                        </button>
+                      <button
+                        type="button"
+                        class="toggle-btn off ${savedWorker.off === "Sick" ? "active" : ""}"
+                        data-off="Sick"
+                      >
+                        Sick
+                      </button>
 
-                        <button
-                          type="button"
-                          class="
-                            toggle-btn
-                            off
-                            ${savedWorker.off === "PTO"
-                            ? "active"
-                            : ""}
-                          "
-                          data-off="PTO"
-                        >
+                      <button
+                        type="button"
+                        class="toggle-btn off ${savedWorker.off === "Other" ? "active" : ""}"
+                        data-off="Other"
+                      >
+                        Other
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </section>
+    `;
 
-                          PTO
+    teamsContainer.appendChild(teamCard);
 
-                        </button>
-
-                        <button
-                          type="button"
-                          class="
-                            toggle-btn
-                            off
-                            ${savedWorker.off === "Sick"
-                            ? "active"
-                            : ""}
-                          "
-                          data-off="Sick"
-                        >
-
-                          Sick
-
-                        </button>
-
-                        <button
-                          type="button"
-                          class="
-                            toggle-btn
-                            off
-                            ${savedWorker.off === "Other"
-                            ? "active"
-                            : ""}
-                          "
-                          data-off="Other"
-                        >
-
-                          Other
-
-                        </button>
-
-                      </div>
-
-                    </td>
-
-                  </tr>
-
-                `;
-
-              }).join("")}
-
-            </tbody>
-
-          </table>
-
-        </section>
-
-      `;
-
-      teamsContainer.appendChild(teamCard);
-
-      wireTeamConditionalInputs(teamCard);
-      wireToggleButtons(teamCard);
-      wireWeatherLogic(teamCard);
-
-    });
-
+    wireTeamConditionalInputs(teamCard);
+    wireToggleButtons(teamCard);
+    wireWorkingForLogic(teamCard);
+    wireWeatherLogic(teamCard);
+  });
 }
 
 /* =========================
@@ -630,49 +516,21 @@ function renderManagerForm(manager) {
 ========================= */
 
 function wireTeamConditionalInputs(teamCard) {
-
-  const activityChecks =
-    teamCard.querySelectorAll(".activityCheck");
-
-  const workingForInput =
-    teamCard.querySelector(".workingForInput");
-
-  const otherInput =
-    teamCard.querySelector(".otherInput");
+  const activityChecks = teamCard.querySelectorAll(".activityCheck");
+  const otherInput = teamCard.querySelector(".otherInput");
 
   activityChecks.forEach(check => {
-
     check.addEventListener("change", () => {
-
-      const selected =
-        getSelectedActivities(teamCard);
-
-      if (selected.includes("Working For")) {
-
-        workingForInput.classList.remove("hidden");
-
-      } else {
-
-        workingForInput.value = "";
-        workingForInput.classList.add("hidden");
-
-      }
+      const selected = getSelectedActivities(teamCard);
 
       if (selected.includes("Other")) {
-
         otherInput.classList.remove("hidden");
-
       } else {
-
         otherInput.value = "";
         otherInput.classList.add("hidden");
-
       }
-
     });
-
   });
-
 }
 
 
@@ -729,6 +587,22 @@ function wireToggleButtons(teamCard) {
 
 }
 
+function wireWorkingForLogic(teamCard) {
+  teamCard.querySelectorAll("tbody tr").forEach(row => {
+    const select = row.querySelector(".working-for-select");
+    const input = row.querySelector(".working-for-other");
+
+    select.addEventListener("change", () => {
+      if (select.value === "Other") {
+        input.classList.remove("hidden-other");
+      } else {
+        input.value = "";
+        input.classList.add("hidden-other");
+      }
+    });
+  });
+}
+
 
 function wireWeatherLogic(teamCard) {
 
@@ -777,138 +651,58 @@ function getSelectedActivities(teamCard) {
 
 
 function collectFormData() {
-
   const teams = {};
 
-  document.querySelectorAll(".team-card")
-    .forEach(teamCard => {
+  document.querySelectorAll(".team-card").forEach(teamCard => {
+    const teamNumber = teamCard.dataset.team;
 
-      const teamNumber =
-        teamCard.dataset.team;
+    const weatheredOut = teamCard.querySelector(".weatherCheck").checked;
 
-      const weatheredOut =
-        teamCard.querySelector(".weatherCheck")
-          .checked;
-
-
-      if (weatheredOut) {
-
-        teams[teamNumber] = {
-
-          weather: true,
-
-          activities: [],
-
-          workingFor: "N/A",
-
-          other: "N/A",
-
-          siteLocation: "N/A",
-
-          adbSite: "N/A",
-
-          workers: {}
-
-        };
-
-        return;
-
-      }
-
-
-      const workers = {};
-
-      teamCard.querySelectorAll("tbody tr")
-        .forEach(row => {
-
-          const workerName =
-            row.dataset.worker;
-
-
-          /* ---------- NWSA ---------- */
-
-          let nwsa = "";
-
-          const nwsaButton =
-            row.querySelector(
-              ".nwsa-toggle .active"
-            );
-
-          if (nwsaButton) {
-
-            nwsa =
-              nwsaButton.dataset.value;
-
-          }
-
-
-          /* ---------- OFF ---------- */
-
-          let off = "";
-
-          const offButton =
-            row.querySelector(
-              ".off-toggle .active"
-            );
-
-          if (offButton) {
-
-            off =
-              offButton.dataset.off;
-
-          }
-
-          workers[workerName] = {
-
-            nwsa,
-
-            vehicle:
-              row.querySelector(".vehicle")
-                .value
-                .trim(),
-
-            off
-
-          };
-
-        });
-
-
+    if (weatheredOut) {
       teams[teamNumber] = {
-
-        weather: false,
-
-        activities:
-          getSelectedActivities(teamCard),
-
-        workingFor:
-          teamCard.querySelector(
-            ".workingForInput"
-          ).value.trim(),
-
-        other:
-          teamCard.querySelector(
-            ".otherInput"
-          ).value.trim(),
-
-        siteLocation:
-          teamCard.querySelector(
-            ".siteLocationInput"
-          ).value.trim(),
-
-        adbSite:
-          teamCard.querySelector(
-            ".adbSiteInput"
-          ).value.trim(),
-
-        workers
-
+        weather: true,
+        activities: [],
+        other: "N/A",
+        siteLocation: "N/A",
+        adbSite: "N/A",
+        workers: {}
       };
 
+      return;
+    }
+
+    const workers = {};
+
+    teamCard.querySelectorAll("tbody tr").forEach(row => {
+      const workerName = row.dataset.worker;
+
+      const nwsaButton = row.querySelector(".nwsa-toggle .active");
+      const offButton = row.querySelector(".off-toggle .active");
+      const workingForSelect = row.querySelector(".working-for-select");
+      const workingForOther = row.querySelector(".working-for-other");
+
+      workers[workerName] = {
+        nwsa: nwsaButton ? nwsaButton.dataset.value : "",
+        vehicle: row.querySelector(".vehicle").value.trim(),
+        workingFor: workingForSelect.value,
+        workingForOther: workingForSelect.value === "Other"
+          ? workingForOther.value.trim()
+          : "",
+        off: offButton ? offButton.dataset.off : ""
+      };
     });
 
-  return teams;
+    teams[teamNumber] = {
+      weather: false,
+      activities: getSelectedActivities(teamCard),
+      other: teamCard.querySelector(".otherInput").value.trim(),
+      siteLocation: teamCard.querySelector(".siteLocationInput").value.trim(),
+      adbSite: teamCard.querySelector(".adbSiteInput").value.trim(),
+      workers
+    };
+  });
 
+  return teams;
 }
 
 /* =========================
@@ -947,27 +741,6 @@ function validateForm() {
         markInvalid(
           teamCard.querySelector(".activity-grid")
         );
-
-      }
-
-      if (
-        selectedActivities.includes("Working For")
-      ) {
-
-        const input =
-          teamCard.querySelector(
-            ".workingForInput"
-          );
-
-        if (!input.value.trim()) {
-
-          errors.push(
-            `Team ${teamNumber}: enter Working For`
-          );
-
-          markInvalid(input);
-
-        }
 
       }
 
@@ -1055,6 +828,26 @@ function validateForm() {
             markInvalid(vehicle);
 
           }
+
+          const workingForSelect =
+            row.querySelector(".working-for-select");
+
+          const workingForOther =
+            row.querySelector(".working-for-other");
+
+          if (
+            workingForSelect.value === "Other"
+            &&
+            !workingForOther.value.trim()
+        ) {
+
+  errors.push(
+    `Team ${teamNumber}: ${workerName} needs Working For name`
+  );
+
+  markInvalid(workingForOther);
+
+}
 
         });
 
@@ -1168,6 +961,215 @@ async function submitReport() {
   } catch (error) {
     console.error(error);
     toast("Error submitting report");
+  }
+}
+
+/* =========================
+   TEMP WORKER / ROSTER MODALS
+========================= */
+
+function openModal(title, html) {
+  modalTitle.textContent = title;
+  modalBody.innerHTML = html;
+  modalOverlay.classList.remove("hidden");
+}
+
+function closeModal() {
+  modalOverlay.classList.add("hidden");
+  modalBody.innerHTML = "";
+}
+
+function openTempWorkerModal() {
+  if (!currentManager) {
+    return;
+  }
+
+  const currentTeams = [
+    ...new Set([
+      ...Object.keys(groupByTeam(cachedRosters[currentManager] || [])),
+      ...Object.keys(cachedReports[currentManager]?.teams || {})
+    ])
+  ].sort((a, b) => Number(a) - Number(b));
+
+  openModal(
+    "Add Temporary Worker",
+    `
+      <div class="temp-worker-card">
+        <h4>Temporary Worker for This Report Only</h4>
+
+        <input id="tempWorkerName" placeholder="Worker Name">
+
+        <select id="tempWorkerTeam" style="margin-top:14px;width:100%;">
+          ${currentTeams.map(team => `
+            <option value="${team}">Team ${team}</option>
+          `).join("")}
+          <option value="NEW">New Team</option>
+        </select>
+
+        <input
+          id="tempWorkerNewTeam"
+          class="hidden-other"
+          placeholder="New Team Number"
+          style="margin-top:14px;width:100%;"
+        >
+
+        <button id="saveTempWorkerBtn" class="save-roster-btn" type="button">
+          Add Temp Worker
+        </button>
+      </div>
+    `
+  );
+
+  const teamSelect = document.getElementById("tempWorkerTeam");
+  const newTeamInput = document.getElementById("tempWorkerNewTeam");
+
+  teamSelect.addEventListener("change", () => {
+    if (teamSelect.value === "NEW") {
+      newTeamInput.classList.remove("hidden-other");
+    } else {
+      newTeamInput.value = "";
+      newTeamInput.classList.add("hidden-other");
+    }
+  });
+
+  document.getElementById("saveTempWorkerBtn").addEventListener("click", saveTempWorker);
+}
+
+function saveTempWorker() {
+  const name = document.getElementById("tempWorkerName").value.trim();
+  const teamChoice = document.getElementById("tempWorkerTeam").value;
+  const newTeam = document.getElementById("tempWorkerNewTeam").value.trim();
+
+  if (!name) {
+    toast("Enter temporary worker name");
+    return;
+  }
+
+  const team = teamChoice === "NEW" ? newTeam : teamChoice;
+
+  if (!team) {
+    toast("Enter team number");
+    return;
+  }
+
+  const currentTeams = collectFormData();
+
+  if (!currentTeams[team]) {
+    currentTeams[team] = {
+      weather: false,
+      activities: [],
+      other: "",
+      siteLocation: "",
+      adbSite: "",
+      workers: {}
+    };
+  }
+
+  currentTeams[team].workers[name] = {
+    nwsa: "",
+    vehicle: "",
+    workingFor: "Me",
+    workingForOther: "",
+    off: ""
+  };
+
+  cachedReports[currentManager] = {
+    submitted: false,
+    draftSavedAt: new Date().toISOString(),
+    teams: currentTeams
+  };
+
+  closeModal();
+  renderManagerForm(currentManager);
+  toast("Temporary worker added for this report");
+}
+
+function openEditRosterModal() {
+  if (!currentManager) {
+    return;
+  }
+
+  const roster = cachedRosters[currentManager] || [];
+
+  openModal(
+    `Edit ${currentManager} Roster`,
+    `
+      <div id="rosterEditorRows">
+        ${roster.map(worker => rosterRowHtml(worker.name, worker.team)).join("")}
+      </div>
+
+      <button id="addRosterRowBtn" class="add-worker-btn" type="button">
+        + Add Worker
+      </button>
+
+      <button id="saveRosterChangesBtn" class="save-roster-btn" type="button">
+        Save Permanent Roster
+      </button>
+    `
+  );
+
+  document.getElementById("addRosterRowBtn").addEventListener("click", () => {
+    document.getElementById("rosterEditorRows").insertAdjacentHTML(
+      "beforeend",
+      rosterRowHtml("", "")
+    );
+
+    wireRosterDeleteButtons();
+  });
+
+  document.getElementById("saveRosterChangesBtn").addEventListener("click", savePermanentRoster);
+
+  wireRosterDeleteButtons();
+}
+
+function rosterRowHtml(name, team) {
+  return `
+    <div class="roster-row">
+      <input class="roster-name" value="${name}" placeholder="Worker Name">
+      <input class="roster-team" value="${team}" placeholder="Team #">
+      <button class="remove-worker-btn" type="button">
+        Remove
+      </button>
+    </div>
+  `;
+}
+
+function wireRosterDeleteButtons() {
+  document.querySelectorAll(".remove-worker-btn").forEach(button => {
+    button.onclick = () => {
+      button.closest(".roster-row").remove();
+    };
+  });
+}
+
+async function savePermanentRoster() {
+  const rows = document.querySelectorAll(".roster-row");
+
+  const newRoster = [...rows]
+    .map(row => ({
+      name: row.querySelector(".roster-name").value.trim(),
+      team: row.querySelector(".roster-team").value.trim()
+    }))
+    .filter(worker => worker.name && worker.team);
+
+  if (newRoster.length === 0) {
+    toast("Roster cannot be empty");
+    return;
+  }
+
+  try {
+    await firebaseSaveRoster(currentManager, newRoster);
+
+    cachedRosters[currentManager] = newRoster;
+
+    closeModal();
+    renderManagerForm(currentManager);
+    renderDashboard();
+
+    toast("Roster updated permanently");
+  } catch (error) {
+    console.error(error);
+    toast("Error saving roster");
   }
 }
 
@@ -1368,6 +1370,7 @@ function renderCompiledReport() {
                 <th>Worker</th>
                 <th>NWSA</th>
                 <th>Vehicle</th>
+                <th>Working For</th>
                 <th>Off</th>
 
               </tr>
@@ -1402,9 +1405,11 @@ function renderCompiledReport() {
                       </td>
 
                       <td>
+                        ${worker.workingFor === "Other" ? worker.workingForOther || "N/A" : "Me"}
+                      </td>
 
+                      <td>
                         ${worker.off || "Working"}
-
                       </td>
 
                     </tr>
