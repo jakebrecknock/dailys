@@ -52,7 +52,7 @@ const FULL_REPORT_RECIPIENTS = [
   "derek@email.com",
   "evan@email.com",
   "christine@email.com",
-  "jbrecknock@adb-us.com"
+  "jbrecknock@adb-us.com",
   "aj@email.com",
   "jimmy@email.com",
   "matta@email.com",
