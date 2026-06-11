@@ -49,7 +49,7 @@ const MANAGERS = [
 ];
 
 const FULL_REPORT_RECIPIENTS = [
-  "derek@email.com",
+  /*"derek@email.com",
   "evan@email.com",
   "christine@email.com",
   "jbrecknock@adb-us.com",
@@ -64,10 +64,11 @@ const FULL_REPORT_RECIPIENTS = [
 
   "extra1@email.com",
   "extra2@email.com",
-  "extra3@email.com"
+  "extra3@email.com"*/
+  "jbrecknock@adb-us.com"
 ];
 
-const FROM_EMAIL = "jakebrecknock@adb-us.com";
+const FROM_EMAIL = "jbrecknock@adb-us.com";
 const SITE_URL = "https://jakebrecknock.com/dailys/";
 
 function managerIdToName(managerId) {
