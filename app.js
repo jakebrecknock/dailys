@@ -123,13 +123,20 @@ window.addEventListener("load", async () => {
 
   wireButtons();
 
-  toast("Connecting to Firebase...");
-
-  await firebaseEnsureDefaultRosters(defaultRosters);
-
-  await refreshData();
+  cachedRosters = { ...defaultRosters };
+  cachedReports = {};
 
   showDashboard();
+
+  try {
+    await firebaseEnsureDefaultRosters(defaultRosters);
+    await refreshData();
+    renderDashboard();
+    toast("Connected to Firebase.");
+  } catch (error) {
+    console.error(error);
+    toast("Firebase connection issue. Showing local defaults.");
+  }
 });
 
 /* =========================
