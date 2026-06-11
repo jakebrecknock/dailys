@@ -7,8 +7,7 @@ const sgMail = require("@sendgrid/mail");
 const {
   MANAGERS,
   FULL_REPORT_RECIPIENTS,
-  FROM_EMAIL,
-  SITE_URL
+  FROM_EMAIL
 } = require("./managers");
 
 const {
@@ -32,14 +31,12 @@ const SENDGRID_API_KEY = defineSecret("SENDGRID_API_KEY");
 function getTodayChicagoDate() {
   const now = new Date();
 
-  const chicagoDate = new Intl.DateTimeFormat("en-CA", {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Chicago",
     year: "numeric",
     month: "2-digit",
     day: "2-digit"
   }).format(now);
-
-  return chicagoDate;
 }
 
 function getDateDaysAgo(daysAgo) {
@@ -77,8 +74,8 @@ async function getReportsForDate(date) {
   snapshot.forEach(doc => {
     const data = doc.data();
 
-    if (data.managerName) {
-      reports[data.managerName] = data;
+    if (data.submitted === true) {
+      reports[data.managerName || doc.id] = data;
     }
   });
 
@@ -96,27 +93,37 @@ function allManagersSubmitted(reports) {
   return getMissingManagers(reports).length === 0;
 }
 
-async function alreadySentCompleteReport(date) {
+async function getEmailStatus(date) {
   const statusSnap = await db
     .collection("emailStatus")
     .doc(date)
     .get();
 
-  return statusSnap.exists && statusSnap.data().completeReportSent === true;
+  return statusSnap.exists ? statusSnap.data() : {};
 }
 
-async function markCompleteReportSent(date) {
+async function markReportEmailSent(date, isUpdated) {
+  const updateData = {
+    completeReportSent: true,
+    lastReportSentAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+
+  if (isUpdated) {
+    updateData.updatedReportCount = admin.firestore.FieldValue.increment(1);
+    updateData.lastUpdatedReportSentAt = admin.firestore.FieldValue.serverTimestamp();
+  } else {
+    updateData.completeReportSentAt = admin.firestore.FieldValue.serverTimestamp();
+    updateData.updatedReportCount = 0;
+  }
+
   await db
     .collection("emailStatus")
     .doc(date)
-    .set({
-      completeReportSent: true,
-      completeReportSentAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    .set(updateData, { merge: true });
 }
 
 /* =====================================================
-   SEND COMPLETE REPORT WHEN ALL MANAGERS SUBMIT
+   SEND COMPLETE / UPDATED REPORT
 ===================================================== */
 
 exports.onDailyReportWritten = onDocumentWritten(
@@ -136,12 +143,9 @@ exports.onDailyReportWritten = onDocumentWritten(
       return;
     }
 
-    const alreadySent = await alreadySentCompleteReport(date);
-
-    if (alreadySent) {
-      console.log(`Complete report already sent for ${date}.`);
-      return;
-    }
+    const beforeData = event.data.before.exists
+      ? event.data.before.data()
+      : null;
 
     const reports = await getReportsForDate(date);
 
@@ -151,14 +155,39 @@ exports.onDailyReportWritten = onDocumentWritten(
       return;
     }
 
+    const emailStatus = await getEmailStatus(date);
+    const firstCompleteEmailAlreadySent = emailStatus.completeReportSent === true;
+
+    const isEdit =
+      beforeData &&
+      beforeData.submitted === true;
+
+    const shouldSendInitialComplete =
+      !firstCompleteEmailAlreadySent;
+
+    const shouldSendUpdated =
+      firstCompleteEmailAlreadySent &&
+      isEdit;
+
+    if (!shouldSendInitialComplete && !shouldSendUpdated) {
+      console.log(`No report email needed for ${date}.`);
+      return;
+    }
+
     const reportHtml = buildReportHtml(
       formatDateLabel(date),
-      reports
+      reports,
+      {
+        isUpdated: shouldSendUpdated
+      }
     );
 
     const email = buildCompleteReportEmail(
       date,
-      reportHtml
+      reportHtml,
+      {
+        isUpdated: shouldSendUpdated
+      }
     );
 
     await sendEmail({
@@ -167,9 +196,16 @@ exports.onDailyReportWritten = onDocumentWritten(
       html: email.html
     });
 
-    await markCompleteReportSent(date);
+    await markReportEmailSent(
+      date,
+      shouldSendUpdated
+    );
 
-    console.log(`Complete report sent for ${date}.`);
+    console.log(
+      shouldSendUpdated
+        ? `Updated complete report sent for ${date}.`
+        : `Complete report sent for ${date}.`
+    );
   }
 );
 
@@ -177,14 +213,8 @@ exports.onDailyReportWritten = onDocumentWritten(
    OUTSTANDING DATE CHECKING
 ===================================================== */
 
-async function getOutstandingDatesForManager(managerId, managerName) {
+async function getOutstandingDatesForManager(managerId) {
   const outstanding = [];
-
-  /*
-    Checks the last 14 days.
-    This creates the "stacking" behavior:
-    if AJ misses Monday and Tuesday, Wednesday reminder includes both.
-  */
 
   for (let daysAgo = 13; daysAgo >= 0; daysAgo--) {
     const date = getDateDaysAgo(daysAgo);
@@ -208,10 +238,7 @@ async function sendOutstandingReminderEmails(label) {
   const results = [];
 
   for (const manager of MANAGERS) {
-    const outstandingDates = await getOutstandingDatesForManager(
-      manager.id,
-      manager.name
-    );
+    const outstandingDates = await getOutstandingDatesForManager(manager.id);
 
     if (outstandingDates.length === 0) {
       results.push(`${manager.name}: no outstanding reports`);
@@ -272,7 +299,6 @@ exports.sendAfternoonDailyReportReminders = onSchedule(
 
 /* =====================================================
    OPTIONAL MANUAL TEST FUNCTION
-   You can call this locally later if needed.
 ===================================================== */
 
 exports.manualSendTodayReminders = onSchedule(

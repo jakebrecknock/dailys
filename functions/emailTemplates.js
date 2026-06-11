@@ -68,19 +68,20 @@ function buildReminderEmail(managerName, outstandingDates) {
 }
 
 /* =====================================================
-   COMPLETE REPORT EMAIL
+   COMPLETE / UPDATED REPORT EMAIL
 ===================================================== */
 
-function buildCompleteReportEmail(date, reportHtml) {
+function buildCompleteReportEmail(date, reportHtml, options = {}) {
+  const isUpdated = options.isUpdated === true;
+
   return {
-    subject: `COMPLETE DAILY FORMS - ${formatDateLabel(date)}`,
+    subject: `${isUpdated ? "*UPDATED* " : ""}COMPLETE DAILY FORMS - ${formatDateLabel(date)}`,
     html: reportHtml
   };
 }
 
 /* =====================================================
    INCOMPLETE INTERNAL SUMMARY EMAIL
-   Optional helper if you later want boss-only incomplete emails.
 ===================================================== */
 
 function buildIncompleteSummaryEmail(date, missingManagers) {

@@ -118,6 +118,10 @@ const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
 const closeModalBtn = document.getElementById("closeModalBtn");
 
+const formActionBar = document.getElementById("formActionBar");
+const actionBarManager = document.getElementById("actionBarManager");
+const actionBarDate = document.getElementById("actionBarDate");
+
 /* =========================
    STARTUP
 ========================= */
@@ -154,12 +158,17 @@ function wireButtons() {
   document.getElementById("reportBackBtn").addEventListener("click", showDashboard);
   document.getElementById("printReportBtn").addEventListener("click", () => window.print());
 
-  document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
   document.getElementById("submitBtn").addEventListener("click", submitReport);
+  document.getElementById("bottomSubmitBtn").addEventListener("click", submitReport);
 
   document.getElementById("tempWorkerBtn").addEventListener("click", openTempWorkerModal);
+  document.getElementById("bottomTempWorkerBtn").addEventListener("click", openTempWorkerModal);
+
   document.getElementById("editRosterBtn").addEventListener("click", openEditRosterModal);
+  document.getElementById("bottomEditRosterBtn").addEventListener("click", openEditRosterModal);
+
   closeModalBtn.addEventListener("click", closeModal);
+
   modalOverlay.addEventListener("click", event => {
     if (event.target === modalOverlay) {
       closeModal();
@@ -208,6 +217,12 @@ function showOnly(view) {
   });
 
   view.classList.remove("hidden");
+
+  if (view === formView) {
+    formActionBar.classList.remove("hidden");
+  } else {
+    formActionBar.classList.add("hidden");
+  }
 }
 
 function showDashboard() {
@@ -221,16 +236,14 @@ function showDashboard() {
 
 function renderDashboard() {
   const submittedManagers = managers.filter(manager => cachedReports[manager]?.submitted);
-  const draftManagers = managers.filter(manager => cachedReports[manager] && !cachedReports[manager]?.submitted);
 
   const submitted = submittedManagers.length;
-  const drafts = draftManagers.length;
   const missing = managers.length - submitted;
 
   completionText.textContent = `${submitted} / ${managers.length}`;
   completeCount.textContent = submitted;
   missingCount.textContent = missing;
-  draftCount.textContent = drafts;
+  draftCount.textContent = "—";
   dateTitle.textContent = `Reports for ${formatDate(dateInput.value)}`;
 
   managerGrid.innerHTML = "";
@@ -241,7 +254,6 @@ function renderDashboard() {
     const teamCount = Object.keys(groupByTeam(roster)).length;
 
     const isSubmitted = !!report?.submitted;
-    const isDraft = !!report && !report.submitted;
 
     const card = document.createElement("article");
     card.className = `manager-card ${isSubmitted ? "complete" : ""}`;
@@ -252,18 +264,18 @@ function renderDashboard() {
           <h3>${manager}</h3>
 
           <span class="pill ${isSubmitted ? "good" : "bad"}">
-            ${isSubmitted ? "COMPLETE" : isDraft ? "DRAFT" : "MISSING"}
+            ${isSubmitted ? "COMPLETE" : "MISSING"}
           </span>
         </div>
 
-        <p><strong>Status:</strong> ${isSubmitted ? "Submitted" : isDraft ? "Draft Saved" : "Missing"}</p>
+        <p><strong>Status:</strong> ${isSubmitted ? "Submitted / Editable" : "Missing"}</p>
         <p><strong>Submitted:</strong> ${isSubmitted ? formatTimestamp(report.submittedAt) : "—"}</p>
         <p><strong>Teams:</strong> ${teamCount}</p>
         <p><strong>Workers:</strong> ${roster.length}</p>
       </div>
 
       <button type="button">
-        Open Daily
+        ${isSubmitted ? "Edit Daily" : "Open Daily"}
       </button>
     `;
 
@@ -287,6 +299,9 @@ function openManager(manager) {
   formTitle.textContent = `${manager} Daily Report`;
   formSubtitle.textContent = `Report Date: ${formatDate(dateInput.value)}`;
 
+  actionBarManager.textContent = `${manager} Daily Report`;
+  actionBarDate.textContent = formatDate(dateInput.value);
+
   renderManagerForm(manager);
 }
 
@@ -306,6 +321,8 @@ function renderManagerForm(manager) {
 
   allTeamNumbers.forEach(teamNumber => {
     const saved = existing[teamNumber] || {};
+    const jobs = normalizeJobs(saved);
+
     const rosterWorkers = rosterTeams[teamNumber] || [];
     const rosterWorkerNames = rosterWorkers.map(worker => worker.name);
 
@@ -343,51 +360,15 @@ function renderManagerForm(manager) {
       </div>
 
       <section class="form-block">
-        <p class="form-block-title">Activities</p>
+        <p class="form-block-title">Jobs</p>
 
-        <div class="activity-grid">
-          ${activities.map(activity => {
-            const checked = saved.activities?.includes(activity) ? "checked" : "";
-
-            return `
-              <label class="activity">
-                <input
-                  type="checkbox"
-                  class="activityCheck"
-                  value="${activity}"
-                  ${checked}
-                >
-                <span>${activity}</span>
-              </label>
-            `;
-          }).join("")}
+        <div class="jobs-container">
+          ${jobs.map((job, index) => buildJobHtml(job, index)).join("")}
         </div>
 
-        <div class="conditional-inputs">
-          <input
-            class="otherInput ${saved.activities?.includes("Other") ? "" : "hidden"}"
-            placeholder="Other activity..."
-            value="${saved.other || ""}"
-          >
-        </div>
-      </section>
-
-      <section class="form-block">
-        <p class="form-block-title">Site Information</p>
-
-        <div class="site-grid">
-          <input
-            class="siteLocationInput"
-            placeholder="Site Location"
-            value="${saved.siteLocation || ""}"
-          >
-
-          <input
-            class="adbSiteInput"
-            placeholder="ADB Site Number"
-            value="${saved.adbSite || ""}"
-          >
-        </div>
+        <button class="add-job-btn" type="button">
+          + Add Another Job
+        </button>
       </section>
 
       <section class="form-block">
@@ -504,24 +485,123 @@ function renderManagerForm(manager) {
 
     teamsContainer.appendChild(teamCard);
 
-    wireTeamConditionalInputs(teamCard);
-    wireToggleButtons(teamCard);
-    wireWorkingForLogic(teamCard);
-    wireWeatherLogic(teamCard);
+    wireTeamCard(teamCard);
   });
 }
 
+function buildJobHtml(job, index) {
+  return `
+    <div class="job-card" data-job-index="${index}">
+      <div class="job-card-title">
+        <h4>Job ${index + 1}</h4>
+
+        ${index === 0
+          ? ""
+          : `<button class="remove-job-btn" type="button">Remove Job</button>`
+        }
+      </div>
+
+      <div class="activity-grid">
+        ${activities.map(activity => {
+          const checked = job.activities?.includes(activity) ? "checked" : "";
+
+          return `
+            <label class="activity">
+              <input
+                type="checkbox"
+                class="activityCheck"
+                value="${activity}"
+                ${checked}
+              >
+              <span>${activity}</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
+
+      <div class="conditional-inputs">
+        <input
+          class="otherInput ${job.activities?.includes("Other") ? "" : "hidden"}"
+          placeholder="Other activity..."
+          value="${job.other || ""}"
+        >
+      </div>
+
+      <div class="site-grid">
+        <input
+          class="siteLocationInput"
+          placeholder="Site Location"
+          value="${job.siteLocation || ""}"
+        >
+
+        <input
+          class="adbSiteInput"
+          placeholder="ADB Site Number"
+          value="${job.adbSite || ""}"
+        >
+      </div>
+    </div>
+  `;
+}
+
 /* =========================
-   FORM INTERACTION
+   TEAM CARD WIRING
 ========================= */
 
-function wireTeamConditionalInputs(teamCard) {
-  const activityChecks = teamCard.querySelectorAll(".activityCheck");
-  const otherInput = teamCard.querySelector(".otherInput");
+function wireTeamCard(teamCard) {
+  wireJobLogic(teamCard);
+  wireToggleButtons(teamCard);
+  wireWorkingForLogic(teamCard);
+  wireWeatherLogic(teamCard);
+}
+
+function wireJobLogic(teamCard) {
+  wireJobCards(teamCard);
+
+  const addJobBtn = teamCard.querySelector(".add-job-btn");
+
+  addJobBtn.addEventListener("click", () => {
+    const jobsContainer = teamCard.querySelector(".jobs-container");
+    const currentJobCount = jobsContainer.querySelectorAll(".job-card").length;
+
+    const newJob = {
+      activities: [],
+      other: "",
+      siteLocation: "",
+      adbSite: ""
+    };
+
+    jobsContainer.insertAdjacentHTML(
+      "beforeend",
+      buildJobHtml(newJob, currentJobCount)
+    );
+
+    wireJobCards(teamCard);
+  });
+}
+
+function wireJobCards(teamCard) {
+  teamCard.querySelectorAll(".job-card").forEach(jobCard => {
+    wireSingleJobCard(jobCard);
+
+    const removeBtn = jobCard.querySelector(".remove-job-btn");
+
+    if (removeBtn) {
+      removeBtn.onclick = () => {
+        jobCard.remove();
+        renumberJobs(teamCard);
+      };
+    }
+  });
+}
+
+function wireSingleJobCard(jobCard) {
+  const activityChecks = jobCard.querySelectorAll(".activityCheck");
+  const otherInput = jobCard.querySelector(".otherInput");
 
   activityChecks.forEach(check => {
-    check.addEventListener("change", () => {
-      const selected = getSelectedActivities(teamCard);
+    check.onchange = () => {
+      const selected = getSelectedActivitiesForJob(jobCard);
 
       if (selected.includes("Other")) {
         otherInput.classList.remove("hidden");
@@ -529,62 +609,66 @@ function wireTeamConditionalInputs(teamCard) {
         otherInput.value = "";
         otherInput.classList.add("hidden");
       }
-    });
+    };
   });
 }
 
+function renumberJobs(teamCard) {
+  teamCard.querySelectorAll(".job-card").forEach((jobCard, index) => {
+    jobCard.dataset.jobIndex = index;
+
+    const title = jobCard.querySelector(".job-card-title h4");
+
+    if (title) {
+      title.textContent = `Job ${index + 1}`;
+    }
+
+    const titleBar = jobCard.querySelector(".job-card-title");
+    const existingRemoveBtn = jobCard.querySelector(".remove-job-btn");
+
+    if (index === 0 && existingRemoveBtn) {
+      existingRemoveBtn.remove();
+    }
+
+    if (index > 0 && !existingRemoveBtn) {
+      titleBar.insertAdjacentHTML(
+        "beforeend",
+        `<button class="remove-job-btn" type="button">Remove Job</button>`
+      );
+    }
+  });
+
+  wireJobCards(teamCard);
+}
+
+/* =========================
+   FORM INTERACTION
+========================= */
 
 function wireToggleButtons(teamCard) {
-
-  /* ---------- NWSA ---------- */
-
   teamCard.querySelectorAll(".nwsa-toggle")
     .forEach(toggle => {
-
-      const buttons =
-        toggle.querySelectorAll(".toggle-btn");
+      const buttons = toggle.querySelectorAll(".toggle-btn");
 
       buttons.forEach(button => {
-
         button.addEventListener("click", () => {
-
-          buttons.forEach(b =>
-            b.classList.remove("active")
-          );
-
+          buttons.forEach(b => b.classList.remove("active"));
           button.classList.add("active");
-
         });
-
       });
-
     });
-
-
-  /* ---------- OFF ---------- */
 
   teamCard.querySelectorAll(".off-toggle")
     .forEach(toggle => {
-
-      const buttons =
-        toggle.querySelectorAll(".toggle-btn");
+      const buttons = toggle.querySelectorAll(".toggle-btn");
 
       buttons.forEach(button => {
-
         button.addEventListener("click", () => {
-
-          buttons.forEach(b =>
-            b.classList.remove("active")
-          );
-
+          buttons.forEach(b => b.classList.remove("active"));
           button.classList.add("active");
-
         });
-
       });
-
     });
-
 }
 
 function wireWorkingForLogic(teamCard) {
@@ -603,68 +687,70 @@ function wireWorkingForLogic(teamCard) {
   });
 }
 
-
 function wireWeatherLogic(teamCard) {
+  const weatherCheck = teamCard.querySelector(".weatherCheck");
 
-  const weatherCheck =
-    teamCard.querySelector(".weatherCheck");
-
-  weatherCheck.addEventListener("change", () => {
-
-    const disabled =
-      weatherCheck.checked;
+  const applyWeatherState = () => {
+    const disabled = weatherCheck.checked;
 
     teamCard
-      .querySelectorAll(
-        "input, select, button.activityCheck"
-      )
+      .querySelectorAll("input, select, button")
       .forEach(element => {
-
-        if (
-          !element.classList.contains("weatherCheck")
-        ) {
-
+        if (!element.classList.contains("weatherCheck")) {
           element.disabled = disabled;
-
         }
-
       });
+  };
 
-  });
-
+  weatherCheck.addEventListener("change", applyWeatherState);
+  applyWeatherState();
 }
-
 
 /* =========================
-   DATA COLLECTION
+   DATA HELPERS
 ========================= */
 
-function getSelectedActivities(teamCard) {
+function normalizeJobs(savedTeam) {
+  if (Array.isArray(savedTeam.jobs) && savedTeam.jobs.length > 0) {
+    return savedTeam.jobs;
+  }
 
   return [
-    ...teamCard.querySelectorAll(
-      ".activityCheck:checked"
-    )
-  ].map(box => box.value);
-
+    {
+      activities: savedTeam.activities || [],
+      other: savedTeam.other || "",
+      siteLocation: savedTeam.siteLocation || "",
+      adbSite: savedTeam.adbSite || ""
+    }
+  ];
 }
 
+function getSelectedActivitiesForJob(jobCard) {
+  return [
+    ...jobCard.querySelectorAll(".activityCheck:checked")
+  ].map(box => box.value);
+}
+
+function collectJobsForTeam(teamCard) {
+  return [...teamCard.querySelectorAll(".job-card")].map(jobCard => ({
+    activities: getSelectedActivitiesForJob(jobCard),
+    other: jobCard.querySelector(".otherInput").value.trim(),
+    siteLocation: jobCard.querySelector(".siteLocationInput").value.trim(),
+    adbSite: jobCard.querySelector(".adbSiteInput").value.trim()
+  }));
+}
 
 function collectFormData() {
   const teams = {};
 
   document.querySelectorAll(".team-card").forEach(teamCard => {
     const teamNumber = teamCard.dataset.team;
-
     const weatheredOut = teamCard.querySelector(".weatherCheck").checked;
 
     if (weatheredOut) {
       teams[teamNumber] = {
         weather: true,
-        activities: [],
-        other: "N/A",
-        siteLocation: "N/A",
-        adbSite: "N/A",
+        jobs: [],
         workers: {}
       };
 
@@ -694,10 +780,7 @@ function collectFormData() {
 
     teams[teamNumber] = {
       weather: false,
-      activities: getSelectedActivities(teamCard),
-      other: teamCard.querySelector(".otherInput").value.trim(),
-      siteLocation: teamCard.querySelector(".siteLocationInput").value.trim(),
-      adbSite: teamCard.querySelector(".adbSiteInput").value.trim(),
+      jobs: collectJobsForTeam(teamCard),
       workers
     };
   });
@@ -710,297 +793,121 @@ function collectFormData() {
 ========================= */
 
 function validateForm() {
-
   const errors = [];
 
-  document.querySelectorAll(".team-card")
-    .forEach(teamCard => {
+  document.querySelectorAll(".team-card").forEach(teamCard => {
+    const teamNumber = teamCard.dataset.team;
 
-      const teamNumber =
-        teamCard.dataset.team;
+    clearInvalidFields(teamCard);
 
-      clearInvalidFields(teamCard);
+    const weatheredOut = teamCard.querySelector(".weatherCheck").checked;
 
-      const weatheredOut =
-        teamCard.querySelector(".weatherCheck")
-          .checked;
+    if (weatheredOut) {
+      return;
+    }
 
-      if (weatheredOut) {
-        return;
+    let totalWorkers = 0;
+    let borrowedWorkers = 0;
+
+    teamCard.querySelectorAll("tbody tr").forEach(row => {
+      totalWorkers++;
+
+      const workerName = row.dataset.worker;
+      const workingForSelect = row.querySelector(".working-for-select");
+      const workingForOther = row.querySelector(".working-for-other");
+
+      if (workingForSelect.value === "Other") {
+        borrowedWorkers++;
+
+        if (!workingForOther.value.trim()) {
+          errors.push(`Team ${teamNumber}: ${workerName} needs Working For name`);
+          markInvalid(workingForOther);
+        }
       }
+    });
 
-      let totalWorkers = 0;
-      let borrowedWorkers = 0;
+    const entireTeamBorrowed =
+      totalWorkers > 0 &&
+      borrowedWorkers === totalWorkers;
 
-      /* ---------- FIRST PASS ---------- */
+    if (!entireTeamBorrowed) {
+      const jobs = [...teamCard.querySelectorAll(".job-card")];
 
-      teamCard.querySelectorAll("tbody tr")
-        .forEach(row => {
+      jobs.forEach((jobCard, index) => {
+        const jobNumber = index + 1;
+        const selectedActivities = getSelectedActivitiesForJob(jobCard);
 
-          totalWorkers++;
-
-          const workerName =
-            row.dataset.worker;
-
-          const workingForSelect =
-            row.querySelector(".working-for-select");
-
-          const workingForOther =
-            row.querySelector(".working-for-other");
-
-          if (
-            workingForSelect.value === "Other"
-          ) {
-
-            borrowedWorkers++;
-
-            if (
-              !workingForOther.value.trim()
-            ) {
-
-              errors.push(
-                `Team ${teamNumber}: ${workerName} needs Working For name`
-              );
-
-              markInvalid(
-                workingForOther
-              );
-
-            }
-
-          }
-
-        });
-
-      /* ---------- ENTIRE TEAM BORROWED ---------- */
-
-      if (
-        totalWorkers > 0 &&
-        borrowedWorkers === totalWorkers
-      ) {
-
-        return;
-
-      }
-
-      /* ---------- ACTIVITIES ---------- */
-
-      const selectedActivities =
-        getSelectedActivities(
-          teamCard
-        );
-
-      if (
-        selectedActivities.length === 0
-      ) {
-
-        errors.push(
-          `Team ${teamNumber}: select at least one activity`
-        );
-
-        markInvalid(
-          teamCard.querySelector(
-            ".activity-grid"
-          )
-        );
-
-      }
-
-      if (
-        selectedActivities.includes(
-          "Other"
-        )
-      ) {
-
-        const input =
-          teamCard.querySelector(
-            ".otherInput"
-          );
-
-        if (
-          !input.value.trim()
-        ) {
-
-          errors.push(
-            `Team ${teamNumber}: enter Other activity`
-          );
-
-          markInvalid(
-            input
-          );
-
+        if (selectedActivities.length === 0) {
+          errors.push(`Team ${teamNumber}, Job ${jobNumber}: select at least one activity`);
+          markInvalid(jobCard.querySelector(".activity-grid"));
         }
 
+        if (selectedActivities.includes("Other")) {
+          const input = jobCard.querySelector(".otherInput");
+
+          if (!input.value.trim()) {
+            errors.push(`Team ${teamNumber}, Job ${jobNumber}: enter Other activity`);
+            markInvalid(input);
+          }
+        }
+
+        const siteLocation = jobCard.querySelector(".siteLocationInput");
+        const adbSite = jobCard.querySelector(".adbSiteInput");
+
+        if (!siteLocation.value.trim()) {
+          errors.push(`Team ${teamNumber}, Job ${jobNumber}: Site Location required`);
+          markInvalid(siteLocation);
+        }
+
+        if (!adbSite.value.trim()) {
+          errors.push(`Team ${teamNumber}, Job ${jobNumber}: Site Number required`);
+          markInvalid(adbSite);
+        }
+      });
+    }
+
+    if (entireTeamBorrowed) {
+      return;
+    }
+
+    teamCard.querySelectorAll("tbody tr").forEach(row => {
+      const workerName = row.dataset.worker;
+      const vehicle = row.querySelector(".vehicle");
+      const nwsaButton = row.querySelector(".nwsa-toggle .active");
+      const workingForSelect = row.querySelector(".working-for-select");
+
+      if (workingForSelect.value === "Other") {
+        return;
       }
 
-      /* ---------- SITE ---------- */
-
-      const siteLocation =
-        teamCard.querySelector(
-          ".siteLocationInput"
-        );
-
-      const adbSite =
-        teamCard.querySelector(
-          ".adbSiteInput"
-        );
-
-      if (
-        !siteLocation.value.trim()
-      ) {
-
-        errors.push(
-          `Team ${teamNumber}: Site Location required`
-        );
-
-        markInvalid(
-          siteLocation
-        );
-
+      if (!nwsaButton) {
+        errors.push(`Team ${teamNumber}: ${workerName} missing NWSA`);
       }
 
-      if (
-        !adbSite.value.trim()
-      ) {
-
-        errors.push(
-          `Team ${teamNumber}: Site Number required`
-        );
-
-        markInvalid(
-          adbSite
-        );
-
+      if (!vehicle.value.trim()) {
+        errors.push(`Team ${teamNumber}: ${workerName} missing vehicle`);
+        markInvalid(vehicle);
       }
-
-      /* ---------- WORKERS ---------- */
-
-      teamCard.querySelectorAll("tbody tr")
-        .forEach(row => {
-
-          const workerName =
-            row.dataset.worker;
-
-          const vehicle =
-            row.querySelector(
-              ".vehicle"
-            );
-
-          const nwsaButton =
-            row.querySelector(
-              ".nwsa-toggle .active"
-            );
-
-          const workingForSelect =
-            row.querySelector(".working-for-select");
-
-          if (
-            workingForSelect.value === "Other"
-          ) {
-
-            return;
-
-          }
-
-          if (
-            !nwsaButton
-          ) {
-
-            errors.push(
-              `Team ${teamNumber}: ${workerName} missing NWSA`
-            );
-
-          }
-
-          if (
-            !vehicle.value.trim()
-          ) {
-
-            errors.push(
-              `Team ${teamNumber}: ${workerName} missing vehicle`
-            );
-
-            markInvalid(
-              vehicle
-            );
-
-          }
-
-        });
-
     });
+  });
 
   return errors;
-
 }
-
 
 function clearInvalidFields(scope = document) {
-
-  scope
-    .querySelectorAll(".invalid-field")
-    .forEach(element => {
-
-      element.classList.remove(
-        "invalid-field"
-      );
-
-    });
-
+  scope.querySelectorAll(".invalid-field").forEach(element => {
+    element.classList.remove("invalid-field");
+  });
 }
-
 
 function markInvalid(element) {
-
   if (element) {
-
-    element.classList.add(
-      "invalid-field"
-    );
-
-  }
-
-}
-
-
-/* =========================
-   FIRESTORE SAVE DRAFT
-========================= */
-
-async function saveDraft() {
-  if (!currentManager) {
-    return;
-  }
-
-  const draftReport = {
-    submitted: false,
-    draftSavedAt: new Date().toISOString(),
-    teams: collectFormData()
-  };
-
-  cachedReports[currentManager] = draftReport;
-  showDashboard();
-
-  try {
-    await firebaseSaveDraft(
-      dateInput.value,
-      currentManager,
-      draftReport.teams
-    );
-
-    await refreshData();
-    renderDashboard();
-
-    toast(`${currentManager} draft saved`);
-  } catch (error) {
-    console.error(error);
-    toast("Error saving draft");
+    element.classList.add("invalid-field");
   }
 }
 
-
 /* =========================
-   FIRESTORE SUBMIT
+   FIRESTORE SUBMIT / UPDATE
 ========================= */
 
 async function submitReport() {
@@ -1015,9 +922,12 @@ async function submitReport() {
     return;
   }
 
+  const previousReport = cachedReports[currentManager];
+
   const submittedReport = {
     submitted: true,
-    submittedAt: new Date().toISOString(),
+    submittedAt: previousReport?.submittedAt || new Date().toISOString(),
+    updatedAt: previousReport?.submitted ? new Date().toISOString() : null,
     teams: collectFormData()
   };
 
@@ -1034,7 +944,10 @@ async function submitReport() {
     await refreshData();
     renderDashboard();
 
-    toast(`${currentManager} submitted`);
+    toast(previousReport?.submitted
+      ? `${currentManager} report updated`
+      : `${currentManager} submitted`
+    );
   } catch (error) {
     console.error(error);
     toast("Error submitting report");
@@ -1042,19 +955,8 @@ async function submitReport() {
 }
 
 /* =========================
-   TEMP WORKER / ROSTER MODALS
+   TEMP WORKERS
 ========================= */
-
-function openModal(title, html) {
-  modalTitle.textContent = title;
-  modalBody.innerHTML = html;
-  modalOverlay.classList.remove("hidden");
-}
-
-function closeModal() {
-  modalOverlay.classList.add("hidden");
-  modalBody.innerHTML = "";
-}
 
 function openTempWorkerModal() {
   if (!currentManager) {
@@ -1072,15 +974,29 @@ function openTempWorkerModal() {
     "Add Temporary Worker",
     `
       <div class="temp-worker-card">
+
         <h4>Temporary Worker for This Report Only</h4>
 
-        <input id="tempWorkerName" placeholder="Worker Name">
+        <input
+          id="tempWorkerName"
+          placeholder="Worker Name"
+        >
 
-        <select id="tempWorkerTeam" style="margin-top:14px;width:100%;">
+        <select
+          id="tempWorkerTeam"
+          style="margin-top:14px;width:100%;"
+        >
+
           ${currentTeams.map(team => `
-            <option value="${team}">Team ${team}</option>
+            <option value="${team}">
+              Team ${team}
+            </option>
           `).join("")}
-          <option value="NEW">New Team</option>
+
+          <option value="NEW">
+            New Team
+          </option>
+
         </select>
 
         <input
@@ -1090,125 +1006,315 @@ function openTempWorkerModal() {
           style="margin-top:14px;width:100%;"
         >
 
-        <button id="saveTempWorkerBtn" class="save-roster-btn" type="button">
+        <button
+          id="saveTempWorkerBtn"
+          class="save-roster-btn"
+          type="button"
+        >
           Add Temp Worker
         </button>
+
       </div>
     `
   );
 
-  const teamSelect = document.getElementById("tempWorkerTeam");
-  const newTeamInput = document.getElementById("tempWorkerNewTeam");
+  const teamSelect =
+    document.getElementById(
+      "tempWorkerTeam"
+    );
 
-  teamSelect.addEventListener("change", () => {
-    if (teamSelect.value === "NEW") {
-      newTeamInput.classList.remove("hidden-other");
-    } else {
-      newTeamInput.value = "";
-      newTeamInput.classList.add("hidden-other");
+  const newTeamInput =
+    document.getElementById(
+      "tempWorkerNewTeam"
+    );
+
+  teamSelect.addEventListener(
+    "change",
+    () => {
+
+      if (
+        teamSelect.value === "NEW"
+      ) {
+
+        newTeamInput.classList.remove(
+          "hidden-other"
+        );
+
+      } else {
+
+        newTeamInput.value = "";
+
+        newTeamInput.classList.add(
+          "hidden-other"
+        );
+
+      }
+
     }
-  });
+  );
 
-  document.getElementById("saveTempWorkerBtn").addEventListener("click", saveTempWorker);
+  document.getElementById(
+    "saveTempWorkerBtn"
+  )
+    .addEventListener(
+      "click",
+      saveTempWorker
+    );
 }
 
 function saveTempWorker() {
-  const name = document.getElementById("tempWorkerName").value.trim();
-  const teamChoice = document.getElementById("tempWorkerTeam").value;
-  const newTeam = document.getElementById("tempWorkerNewTeam").value.trim();
+
+  const name =
+    document.getElementById(
+      "tempWorkerName"
+    )
+      .value
+      .trim();
+
+  const teamChoice =
+    document.getElementById(
+      "tempWorkerTeam"
+    )
+      .value;
+
+  const newTeam =
+    document.getElementById(
+      "tempWorkerNewTeam"
+    )
+      .value
+      .trim();
 
   if (!name) {
-    toast("Enter temporary worker name");
+
+    toast(
+      "Enter temporary worker name"
+    );
+
     return;
+
   }
 
-  const team = teamChoice === "NEW" ? newTeam : teamChoice;
+  const team =
+    teamChoice === "NEW"
+      ? newTeam
+      : teamChoice;
 
   if (!team) {
-    toast("Enter team number");
+
+    toast(
+      "Enter team number"
+    );
+
     return;
+
   }
 
-  const currentTeams = collectFormData();
+  const currentTeams =
+    collectFormData();
 
-  if (!currentTeams[team]) {
+  if (
+    !currentTeams[team]
+  ) {
+
     currentTeams[team] = {
+
       weather: false,
-      activities: [],
-      other: "",
-      siteLocation: "",
-      adbSite: "",
+
+      jobs: [
+        {
+          activities: [],
+          other: "",
+          siteLocation: "",
+          adbSite: ""
+        }
+      ],
+
       workers: {}
+
     };
+
   }
 
-  currentTeams[team].workers[name] = {
+  currentTeams[team]
+    .workers[name] = {
+
     nwsa: "",
     vehicle: "",
     workingFor: "Me",
     workingForOther: "",
     off: ""
+
   };
 
   cachedReports[currentManager] = {
-    submitted: false,
-    draftSavedAt: new Date().toISOString(),
-    teams: currentTeams
+
+    submitted: true,
+
+    teams:
+      currentTeams
+
   };
 
   closeModal();
-  renderManagerForm(currentManager);
-  toast("Temporary worker added for this report");
+
+  renderManagerForm(
+    currentManager
+  );
+
+  toast(
+    "Temporary worker added"
+  );
+
 }
 
+/* =========================
+   MODALS
+========================= */
+
+function openModal(
+  title,
+  html
+) {
+
+  modalTitle.textContent =
+    title;
+
+  modalBody.innerHTML =
+    html;
+
+  modalOverlay.classList.remove(
+    "hidden"
+  );
+
+}
+
+function closeModal() {
+
+  modalOverlay.classList.add(
+    "hidden"
+  );
+
+  modalBody.innerHTML = "";
+
+}
+
+/* =========================
+   ROSTER EDITOR
+========================= */
+
 function openEditRosterModal() {
-  if (!currentManager) {
+
+  if (
+    !currentManager
+  ) {
+
     return;
+
   }
 
-  const roster = cachedRosters[currentManager] || [];
+  const roster =
+    cachedRosters[currentManager]
+    || [];
 
   openModal(
+
     `Edit ${currentManager} Roster`,
+
     `
       <div id="rosterEditorRows">
-        ${roster.map(worker => rosterRowHtml(worker.name, worker.team)).join("")}
+
+        ${roster.map(worker =>
+          rosterRowHtml(
+            worker.name,
+            worker.team
+          )
+        ).join("")}
+
       </div>
 
-      <button id="addRosterRowBtn" class="add-worker-btn" type="button">
+      <button
+        id="addRosterRowBtn"
+        class="add-worker-btn"
+        type="button"
+      >
         + Add Worker
       </button>
 
-      <button id="saveRosterChangesBtn" class="save-roster-btn" type="button">
+      <button
+        id="saveRosterChangesBtn"
+        class="save-roster-btn"
+        type="button"
+      >
         Save Permanent Roster
       </button>
     `
+
   );
 
-  document.getElementById("addRosterRowBtn").addEventListener("click", () => {
-    document.getElementById("rosterEditorRows").insertAdjacentHTML(
-      "beforeend",
-      rosterRowHtml("", "")
-    );
+  document.getElementById(
+    "addRosterRowBtn"
+  )
+    .onclick = () => {
 
-    wireRosterDeleteButtons();
-  });
+      document
+        .getElementById(
+          "rosterEditorRows"
+        )
+        .insertAdjacentHTML(
+          "beforeend",
+          rosterRowHtml(
+            "",
+            ""
+          )
+        );
 
-  document.getElementById("saveRosterChangesBtn").addEventListener("click", savePermanentRoster);
+      wireRosterDeleteButtons();
+
+    };
+
+  document
+    .getElementById(
+      "saveRosterChangesBtn"
+    )
+    .onclick =
+      savePermanentRoster;
 
   wireRosterDeleteButtons();
+
 }
 
-function rosterRowHtml(name, team) {
+function rosterRowHtml(
+  name,
+  team
+) {
+
   return `
+
     <div class="roster-row">
-      <input class="roster-name" value="${name}" placeholder="Worker Name">
-      <input class="roster-team" value="${team}" placeholder="Team #">
-      <button class="remove-worker-btn" type="button">
+
+      <input
+        class="roster-name"
+        value="${name}"
+        placeholder="Worker Name"
+      >
+
+      <input
+        class="roster-team"
+        value="${team}"
+        placeholder="Team #"
+      >
+
+      <button
+        class="remove-worker-btn"
+        type="button"
+      >
         Remove
       </button>
+
     </div>
+
   `;
+
 }
 
 function wireRosterDeleteButtons() {
@@ -1255,7 +1361,6 @@ async function savePermanentRoster() {
 ========================= */
 
 function renderCompiledReport() {
-
   showOnly(reportView);
 
   reportDateLine.textContent =
@@ -1264,366 +1369,188 @@ function renderCompiledReport() {
   compiledReport.innerHTML = "";
 
   managers.forEach(manager => {
+    const report = cachedReports[manager];
 
-    const report =
-      cachedReports[manager];
-
-    const section =
-      document.createElement("section");
-
-    section.className =
-      "report-manager";
+    const section = document.createElement("section");
+    section.className = "report-manager";
 
     if (!report?.submitted) {
-
       section.innerHTML = `
-
-        <h3>
-
-          ${manager}
-
-        </h3>
-
-        <p>
-
-          <strong>Status:</strong>
-
-          DAILY NOT SUBMITTED
-
-        </p>
-
+        <h3>${manager}</h3>
+        <p><strong>Status:</strong> DAILY NOT SUBMITTED</p>
       `;
 
       compiledReport.appendChild(section);
-
       return;
-
     }
 
     section.innerHTML = `
-
-      <h3>
-
-        ${manager}
-
-      </h3>
-
+      <h3>${manager}</h3>
       <p>
-
         <strong>Submitted:</strong>
-
         ${formatTimestamp(report.submittedAt)}
-
+        ${
+          report.updatedAt
+            ? ` &nbsp; | &nbsp; <strong>Updated:</strong> ${formatTimestamp(report.updatedAt)}`
+            : ""
+        }
       </p>
-
     `;
 
-    Object.entries(report.teams)
-      .forEach(([teamNumber, team]) => {
+    Object.entries(report.teams).forEach(([teamNumber, team]) => {
+      const teamDiv = document.createElement("div");
+      teamDiv.className = "report-team";
 
-        const teamDiv =
-          document.createElement("div");
+      let jobsHtml = "";
 
-        teamDiv.className =
-          "report-team";
+      if (team.weather) {
+        jobsHtml = `<p><strong>Status:</strong> WEATHERED OUT</p>`;
+      } else {
+        const jobs = normalizeJobs(team);
 
-        let activityTags = "";
+        jobs.forEach((job, index) => {
+          let activityTags = "";
 
-        team.activities.forEach(activity => {
-
-          if (
-            activity === "Working For"
-            &&
-            team.workingFor
-          ) {
-
-            activityTags += `
-
-              <span class="tag">
-
-                Working For:
-                ${team.workingFor}
-
-              </span>
-
-            `;
-
-          }
-
-          else if (
-            activity === "Other"
-            &&
-            team.other
-          ) {
-
-            activityTags += `
-
-              <span class="tag">
-
-                Other:
-                ${team.other}
-
-              </span>
-
-            `;
-
-          }
-
-          else {
-
-            activityTags += `
-
-              <span class="tag">
-
-                ${activity}
-
-              </span>
-
-            `;
-
-          }
-
-        });
-
-        teamDiv.innerHTML = `
-
-          <h4>
-
-            Team ${teamNumber}
-
-            ${team.weather
-              ? " — WEATHERED OUT"
-              : ""
+          (job.activities || []).forEach(activity => {
+            if (activity === "Other" && job.other) {
+              activityTags += `
+                <span class="tag">
+                  Other: ${job.other}
+                </span>
+              `;
+            } else {
+              activityTags += `
+                <span class="tag">
+                  ${activity}
+                </span>
+              `;
             }
+          });
 
-          </h4>
+          jobsHtml += `
+            <div class="report-job">
+              <h5>Job ${index + 1}</h5>
 
-          <p>
+              <p>${activityTags}</p>
 
-            ${activityTags}
+              <p>
+                <strong>Site Location:</strong>
+                ${job.siteLocation || "N/A"}
+              </p>
 
-          </p>
+              <p>
+                <strong>ADB Site #:</strong>
+                ${job.adbSite || "N/A"}
+              </p>
+            </div>
+          `;
+        });
+      }
 
-          <p>
+      teamDiv.innerHTML = `
+        <h4>
+          Team ${teamNumber}
+          ${team.weather ? " — WEATHERED OUT" : ""}
+        </h4>
 
-            <strong>
+        ${jobsHtml}
+      `;
 
-              Site Location:
+      if (!team.weather) {
+        const table = document.createElement("table");
+        table.className = "worker-table";
 
-            </strong>
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Worker</th>
+              <th>NWSA</th>
+              <th>Vehicle</th>
+              <th>Working For</th>
+              <th>Off</th>
+            </tr>
+          </thead>
 
-            ${team.siteLocation}
-
-          </p>
-
-          <p>
-
-            <strong>
-
-              ADB Site #:
-
-            </strong>
-
-            ${team.adbSite}
-
-          </p>
-
+          <tbody>
+            ${Object.entries(team.workers || {})
+              .map(([name, worker]) => {
+                return `
+                  <tr>
+                    <td>${name}</td>
+                    <td>${worker.nwsa || "N/A"}</td>
+                    <td>${worker.vehicle || "N/A"}</td>
+                    <td>
+                      ${
+                        worker.workingFor === "Other"
+                          ? worker.workingForOther || "N/A"
+                          : ""
+                      }
+                    </td>
+                    <td>${worker.off || "Working"}</td>
+                  </tr>
+                `;
+              }).join("")}
+          </tbody>
         `;
 
-        if (!team.weather) {
+        teamDiv.appendChild(table);
+      }
 
-          const table =
-            document.createElement("table");
-
-          table.className =
-            "worker-table";
-
-          table.innerHTML = `
-
-            <thead>
-
-              <tr>
-
-                <th>Worker</th>
-                <th>NWSA</th>
-                <th>Vehicle</th>
-                <th>Working For</th>
-                <th>Off</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              ${Object.entries(team.workers)
-                .map(([name, worker]) => {
-
-                  return `
-
-                    <tr>
-
-                      <td>
-
-                        ${name}
-
-                      </td>
-
-                      <td>
-
-                        ${worker.nwsa || "N/A"}
-
-                      </td>
-
-                      <td>
-
-                        ${worker.vehicle || "N/A"}
-
-                      </td>
-
-                      <td>
-  ${
-    worker.workingFor === "Other"
-      ? worker.workingForOther || "N/A"
-      : ""
-  }
-</td>
-
-                      <td>
-                        ${worker.off || "Working"}
-                      </td>
-
-                    </tr>
-
-                  `;
-
-                }).join("")}
-
-            </tbody>
-
-          `;
-
-          teamDiv.appendChild(table);
-
-        }
-
-        section.appendChild(teamDiv);
-
-      });
+      section.appendChild(teamDiv);
+    });
 
     compiledReport.appendChild(section);
-
   });
-
 }
-
 
 /* =========================
    HELPERS
 ========================= */
 
 function groupByTeam(roster) {
-
-  return roster.reduce(
-    (groups, worker) => {
-
-      if (!groups[worker.team]) {
-
-        groups[worker.team] = [];
-
-      }
-
-      groups[worker.team].push(worker);
-
-      return groups;
-
-    },
-
-    {}
-
-  );
-
-}
-
-
-function formatDate(dateString) {
-
-  if (!dateString) {
-
-    return "";
-
-  }
-
-  const [
-    year,
-    month,
-    day
-  ] = dateString.split("-");
-
-  return new Date(
-    year,
-    month - 1,
-    day
-  ).toLocaleDateString(
-
-    "en-US",
-
-    {
-
-      weekday: "short",
-
-      month: "short",
-
-      day: "numeric",
-
-      year: "numeric"
-
+  return roster.reduce((groups, worker) => {
+    if (!groups[worker.team]) {
+      groups[worker.team] = [];
     }
 
-  );
+    groups[worker.team].push(worker);
 
+    return groups;
+  }, {});
 }
 
+function formatDate(dateString) {
+  if (!dateString) {
+    return "";
+  }
+
+  const [year, month, day] = dateString.split("-");
+
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
 
 function formatTimestamp(timestamp) {
-
   if (!timestamp) {
-
     return "—";
-
   }
 
   try {
-
-    return new Date(timestamp)
-      .toLocaleString();
-
-  }
-
-  catch {
-
+    return new Date(timestamp).toLocaleString();
+  } catch {
     return timestamp;
-
   }
-
 }
 
-
 function toast(message) {
-
-  toastBox.textContent =
-    message;
-
-  toastBox.classList.remove(
-    "hidden"
-  );
+  toastBox.textContent = message;
+  toastBox.classList.remove("hidden");
 
   setTimeout(() => {
-
-    toastBox.classList.add(
-      "hidden"
-    );
-
+    toastBox.classList.add("hidden");
   }, 2500);
-
 }
