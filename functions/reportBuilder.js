@@ -168,7 +168,7 @@ function buildReportHtml(date, reports) {
 
           }
 
-          team.activities.forEach(activity => {
+          (team.activities || []).forEach(activity => {
 
             if (
               activity === "Working For"

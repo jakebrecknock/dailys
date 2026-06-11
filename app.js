@@ -132,7 +132,6 @@ window.addEventListener("load", async () => {
     await firebaseEnsureDefaultRosters(defaultRosters);
     await refreshData();
     renderDashboard();
-    toast("Connected to Firebase.");
   } catch (error) {
     console.error(error);
     toast("Firebase connection issue. Showing local defaults.");
@@ -798,7 +797,7 @@ function collectFormData() {
 
           weather: true,
 
-          activities: ["WEATHERED OUT"],
+          activities: [],
 
           workingFor: "N/A",
 
@@ -1099,39 +1098,34 @@ function markInvalid(element) {
 ========================= */
 
 async function saveDraft() {
-
   if (!currentManager) {
     return;
   }
 
-  try {
+  const draftReport = {
+    submitted: false,
+    draftSavedAt: new Date().toISOString(),
+    teams: collectFormData()
+  };
 
+  cachedReports[currentManager] = draftReport;
+  showDashboard();
+
+  try {
     await firebaseSaveDraft(
       dateInput.value,
       currentManager,
-      collectFormData()
+      draftReport.teams
     );
 
     await refreshData();
-
-    toast(
-      `${currentManager} draft saved`
-    );
-
     renderDashboard();
 
-  }
-
-  catch (error) {
-
+    toast(`${currentManager} draft saved`);
+  } catch (error) {
     console.error(error);
-
-    toast(
-      "Error saving draft"
-    );
-
+    toast("Error saving draft");
   }
-
 }
 
 
@@ -1140,50 +1134,41 @@ async function saveDraft() {
 ========================= */
 
 async function submitReport() {
-
   if (!currentManager) {
     return;
   }
 
-  const errors =
-    validateForm();
+  const errors = validateForm();
 
   if (errors.length > 0) {
-
     toast(errors[0]);
-
     return;
-
   }
 
-  try {
+  const submittedReport = {
+    submitted: true,
+    submittedAt: new Date().toISOString(),
+    teams: collectFormData()
+  };
 
+  cachedReports[currentManager] = submittedReport;
+  showDashboard();
+
+  try {
     await firebaseSubmitReport(
       dateInput.value,
       currentManager,
-      collectFormData()
+      submittedReport.teams
     );
 
     await refreshData();
+    renderDashboard();
 
-    toast(
-      `${currentManager} submitted`
-    );
-
-    showDashboard();
-
-  }
-
-  catch (error) {
-
+    toast(`${currentManager} submitted`);
+  } catch (error) {
     console.error(error);
-
-    toast(
-      "Error submitting report"
-    );
-
+    toast("Error submitting report");
   }
-
 }
 
 /* =========================
