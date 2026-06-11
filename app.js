@@ -132,17 +132,19 @@ window.addEventListener("load", async () => {
   wireButtons();
 
   cachedRosters = { ...defaultRosters };
-  cachedReports = {};
+  cachedReports = loadReportsCache(dateInput.value);
 
   showDashboard();
   renderDashboard();
+
   try {
     await firebaseEnsureDefaultRosters(defaultRosters);
     await refreshData();
+    saveReportsCache(dateInput.value);
     renderDashboard();
   } catch (error) {
     console.error(error);
-    toast("Firebase connection issue. Showing local defaults.");
+    toast("Firebase connection issue. Showing last known data.");
   }
 });
 
@@ -175,21 +177,27 @@ function wireButtons() {
     }
   });
 
-  dateInput.addEventListener("change", async () => {
-    await refreshData();
+dateInput.addEventListener("change", async () => {
 
-    if (!dashboardView.classList.contains("hidden")) {
-      renderDashboard();
-    }
+  cachedReports = loadReportsCache(dateInput.value);
 
-    if (!formView.classList.contains("hidden") && currentManager) {
-      openManager(currentManager);
-    }
+  renderDashboard();
 
-    if (!reportView.classList.contains("hidden")) {
-      renderCompiledReport();
-    }
-  });
+  await refreshData();
+
+  if (!dashboardView.classList.contains("hidden")) {
+    renderDashboard();
+  }
+
+  if (!formView.classList.contains("hidden") && currentManager) {
+    openManager(currentManager);
+  }
+
+  if (!reportView.classList.contains("hidden")) {
+    renderCompiledReport();
+  }
+
+});
 }
 
 /* =========================
@@ -205,6 +213,8 @@ async function refreshData() {
       cachedRosters[manager] = defaultRosters[manager] || [];
     }
   });
+
+  saveReportsCache(dateInput.value);
 }
 
 /* =========================
@@ -1377,6 +1387,25 @@ async function savePermanentRoster() {
     console.error(error);
     toast("Error saving roster");
   }
+}
+
+function reportsCacheKey(date) {
+  return `adbDailyReports_${date}`;
+}
+
+function loadReportsCache(date) {
+  try {
+    return JSON.parse(localStorage.getItem(reportsCacheKey(date))) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveReportsCache(date) {
+  localStorage.setItem(
+    reportsCacheKey(date),
+    JSON.stringify(cachedReports || {})
+  );
 }
 
 /* =========================
