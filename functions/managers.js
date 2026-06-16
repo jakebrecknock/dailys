@@ -9,63 +9,62 @@ const MANAGERS = [
   {
     id: "aj",
     name: "AJ",
-    email: "aj@email.com"
+    email: "ajkwasek@adb-us.com"
   },
   {
     id: "jimmy",
     name: "Jimmy",
-    email: "jimmy@email.com"
+    email: "jfelgenhauer@adb-us.com"
   },
   {
     id: "matta",
     name: "Matt A",
-    email: "matta@email.com"
+    email: "madler@adb-us.com"
   },
   {
     id: "mattp",
     name: "Matt P",
-    email: "mattp@email.com"
+    email: "matt.panince@adb-us.com"
   },
   {
     id: "bob",
     name: "Bob",
-    email: "bob@email.com"
+    email: "bob.johnson@adb-us.com"
   },
   {
     id: "zach",
     name: "Zach",
-    email: "zach@email.com"
+    email: "zragland@adb-us.com"
   },
   {
     id: "will",
     name: "Will",
-    email: "will@email.com"
+    email: "wwright@adb-us.com"
   },
   {
     id: "barry",
     name: "Barry",
-    email: "barry@email.com"
+    email: "bbergling@adb-us.com"
   }
 ];
 
 const FULL_REPORT_RECIPIENTS = [
-  /*"derek@email.com",
-  "evan@email.com",
-  "christine@email.com",
-  "jbrecknock@adb-us.com",
-  "aj@email.com",
-  "jimmy@email.com",
-  "matta@email.com",
-  "mattp@email.com",
-  "bob@email.com",
-  "zach@email.com",
-  "will@email.com",
-  "barry@email.com",
+  /*"derek.pleva@adb-us.com",
+  "eebay@adb-us.com",
+  "cgambrell@adb-us.com",*/
+  "jbrecknock@adb-us.com"/*,
+  "ajkwasek@adb-us.com",
+  "jfelgenhauer@adb-us.com",
+  "madler@adb-us.com",
+  "matt.panince@adb-us.com",
+  "bob.johnson@adb-us.com",
+  "zragland@adb-us.com",
+  "wwright@adb-us.com",
+  "bbergling@adb-us.com",
 
   "extra1@email.com",
   "extra2@email.com",
   "extra3@email.com"*/
-  "jbrecknock@adb-us.com"
 ];
 
 const FROM_EMAIL = "jbrecknock@adb-us.com";
