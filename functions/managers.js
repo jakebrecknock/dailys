@@ -1,10 +1,3 @@
-/* =====================================================
-   MANAGERS / EMAIL CONFIG
-
-   IMPORTANT:
-   Replace all placeholder emails before deploying email.
-===================================================== */
-
 const MANAGERS = [
   {
     id: "aj",
@@ -61,10 +54,9 @@ const FULL_REPORT_RECIPIENTS = [
   "zragland@adb-us.com",
   "wwright@adb-us.com",
   "bbergling@adb-us.com",
-
-  "extra1@email.com",
-  "extra2@email.com",
-  "extra3@email.com"*/
+  "cludwig@adb-us.com",
+  "dsleppy@adb-us.com",
+  "mvanderzanden@adb-us.com"*/
 ];
 
 const FROM_EMAIL = "jbrecknock@adb-us.com";
