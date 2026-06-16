@@ -563,7 +563,7 @@ function buildJobHtml(job, index) {
       <div class="site-grid">
         <input
           class="siteLocationInput"
-          placeholder="Site Location"
+          placeholder="Site Name"
           value="${job.siteLocation || ""}"
         >
 
@@ -888,7 +888,7 @@ function validateForm() {
         const adbSite = jobCard.querySelector(".adbSiteInput");
 
         if (!siteLocation.value.trim()) {
-          errors.push(`Team ${teamNumber}, Job ${jobNumber}: Site Location required`);
+          errors.push(`Team ${teamNumber}, Job ${jobNumber}: Site Name required`);
           markInvalid(siteLocation);
         }
 
@@ -1486,7 +1486,7 @@ function renderCompiledReport() {
               <p>${activityTags}</p>
 
               <p>
-                <strong>Site Location:</strong>
+                <strong>Site Name:</strong>
                 ${job.siteLocation || "N/A"}
               </p>
 
