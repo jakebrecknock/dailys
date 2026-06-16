@@ -42,8 +42,8 @@ const MANAGERS = [
 ];
 
 const FULL_REPORT_RECIPIENTS = [
-  /*"derek.pleva@adb-us.com",
-  "eebay@adb-us.com",
+  "derek.pleva@adb-us.com",
+  /*"eebay@adb-us.com",
   "cgambrell@adb-us.com",*/
   "jbrecknock@adb-us.com"/*,
   "ajkwasek@adb-us.com",
