@@ -283,7 +283,7 @@ function buildReportHtml(date, reports, options = {}) {
                   </div>
 
                   <div class="site-line">
-                    <strong>Site Location:</strong>
+                    <strong>Site Name:</strong>
                     ${job.siteLocation || "N/A"}
                   </div>
 
