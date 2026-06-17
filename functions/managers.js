@@ -2,42 +2,42 @@ const MANAGERS = [
   {
     id: "aj",
     name: "AJ",
-    email: "ajkwasek@adb-us.com"
+    email: "ajkwasek@adb-us"
   },
   {
     id: "jimmy",
     name: "Jimmy",
-    email: "jfelgenhauer@adb-us.com"
+    email: "jfelgenhauer@adb-us"
   },
   {
     id: "matta",
     name: "Matt A",
-    email: "madler@adb-us.com"
+    email: "madler@adb-us"
   },
   {
     id: "mattp",
     name: "Matt P",
-    email: "matt.panince@adb-us.com"
+    email: "matt.panince@adb-us"
   },
   {
     id: "bob",
     name: "Bob",
-    email: "bob.johnson@adb-us.com"
+    email: "bob.johnson@adb-us"
   },
   {
     id: "zach",
     name: "Zach",
-    email: "zragland@adb-us.com"
+    email: "zragland@adb-us"
   },
   {
     id: "will",
     name: "Will",
-    email: "wwright@adb-us.com"
+    email: "wwright@adb-us"
   },
   {
     id: "barry",
     name: "Barry",
-    email: "bbergling@adb-us.com"
+    email: "bbergling@adb-us"
   }
 ];
 
