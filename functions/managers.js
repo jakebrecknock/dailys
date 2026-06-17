@@ -50,6 +50,7 @@ const FULL_REPORT_RECIPIENTS = [
   "jfelgenhauer@adb-us.com",
   "madler@adb-us.com",
   "matt.panince@adb-us.com",
+  "mark.panince@adb-us.com",
   "bob.johnson@adb-us.com",
   "zragland@adb-us.com",
   "wwright@adb-us.com",
